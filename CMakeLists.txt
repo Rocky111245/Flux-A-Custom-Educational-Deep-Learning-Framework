@@ -14,10 +14,16 @@ add_executable(_Discriminative_Dense_Neural_Network_Framework
         "MSEGraphPlotter.h"
         "NNStructureVis .cpp"
         "NNStructureVis .h"
-        "Loss Functions/Loss Functions.cpp"
-        "Loss Functions/Loss Functions.h"
+        "Loss Functions/Loss_Functions.cpp"
+        "Loss Functions/Loss_Functions.h"
         "Forward Pass/Forward_Pass.cpp"
         "Forward Pass/Forward_Pass.h"
+        "Neural_Blocks/Neural_Blocks.cpp"
+        "Neural_Blocks/Neural_Blocks.h"
+        "Initialize Weights/Initialize_Weights.cpp"
+        "Initialize Weights/Initialize_Weights.h"
+        "Neural_Layers/Neural_Layer_Skeleton.cpp"  # Corrected path
+        "Neural_Layers/Neural_Layer_Skeleton.h"    # Corrected path
 )
 
 # Tokenizer executable using the existing Tokenizer.cpp with main()
