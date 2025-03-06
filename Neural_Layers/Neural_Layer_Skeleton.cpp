@@ -30,6 +30,25 @@ int Neural_Layer_Skeleton::get_neuron_count() const {
     return neurone_number_current_layer;
 }
 
+
+
+Neural_Layer_Skeleton& Neural_Layer_Skeleton::operator=(const Neural_Layer_Skeleton& other) {
+    if (this != &other) { // Prevent self-assignment
+        this->neurone_number_current_layer = other.neurone_number_current_layer;
+        this->activationType = other.activationType;
+
+        // Deep copy of matrices
+        this->input_matrix = other.input_matrix;
+        this->weights_matrix = other.weights_matrix;
+        this->bias_matrix = other.bias_matrix;
+        this->pre_activation_tensor = other.pre_activation_tensor;
+        this->post_activation_tensor = other.post_activation_tensor;
+    }
+    return *this;
+}
+
+
+
 // Getter method implementation for accessing the activation type
 ActivationType Neural_Layer_Skeleton::get_activation_type() const {
     return activationType;

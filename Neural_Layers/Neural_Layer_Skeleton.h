@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <MatrixLibrary.h>
 
+
 // Forward declarations of dependencies
 class MatrixLibrary;  // If needed by the implementation
 
@@ -33,6 +34,7 @@ public:
 
     // Public member functions
     void show_layer_info() const;
+    Neural_Layer_Skeleton& operator=(const Neural_Layer_Skeleton& other);
 
     // Getter methods
     int get_neuron_count() const;
@@ -50,6 +52,8 @@ private:
 
     // Private helper functions
     static std::string ActivationTypeToString(ActivationType activation_type);
+
     friend class Neural_Block;
+    friend class Train_Block_by_Backpropagation;
 };
 #endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_SKELETON_H

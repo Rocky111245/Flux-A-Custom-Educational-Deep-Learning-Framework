@@ -23,7 +23,9 @@ add_executable(_Discriminative_Dense_Neural_Network_Framework
         "Initialize Weights/Initialize_Weights.cpp"
         "Initialize Weights/Initialize_Weights.h"
         "Neural_Layers/Neural_Layer_Skeleton.cpp"  # Corrected path
-        "Neural_Layers/Neural_Layer_Skeleton.h"    # Corrected path
+        "Neural_Layers/Neural_Layer_Skeleton.h"
+        "Optimization Algorithms/Train_Block_by_Backpropagation.cpp"
+        "Optimization Algorithms/Train_Block_by_Backpropagation.h"    # Corrected path
 )
 
 # Tokenizer executable using the existing Tokenizer.cpp with main()

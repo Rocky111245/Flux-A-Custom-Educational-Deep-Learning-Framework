@@ -14,6 +14,21 @@ float Mean_Squared_Error_Loss(Matrix &predicted, Matrix &target) {
     return MSE;
 }
 
+// Mean Absolute Error Loss (L1 Loss)
+float Mean_Absolute_Error_Loss(Matrix &predicted, Matrix &target) {
+    Matrix diff = Matrix_AutoCreate(predicted, target);
+    Matrix_Subtract(diff, predicted, target);  // predicted - target
+    int num_samples = predicted.rows(); // Use matrix size directly
+
+    // Take absolute values of the differences
+    Matrix abs_diff = Matrix_AutoCreate(diff, diff);
+    Matrix_Absolute(abs_diff, diff);
+
+    // Calculate the mean of absolute differences
+    float mae_loss = Matrix_Sum_All_Elements(abs_diff) / num_samples;
+    return mae_loss;
+}
+
 
 // Huber Loss
 float Huber_Loss(Matrix &predicted, Matrix &target,float delta) {
@@ -60,6 +75,9 @@ float Calculate_Loss(Matrix &predicted, Matrix &target, LossFunction loss_functi
 
         case LossFunction::CROSS_ENTROPY_LOSS:
             return Binary_Cross_Entropy_Loss(predicted, target);
+
+        case LossFunction::MAE_LOSS:
+            return Mean_Absolute_Error_Loss(predicted, target);
 
         default:
             throw std::invalid_argument("Invalid loss function type for this overload.");

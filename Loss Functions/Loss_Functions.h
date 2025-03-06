@@ -7,8 +7,10 @@ enum class LossFunction {
     MSE_LOSS,
     HUBER_LOSS,
     CROSS_ENTROPY_LOSS,
+    MAE_LOSS
 };
 float Calculate_Loss(Matrix &predicted, Matrix &target, LossFunction loss_function) ;
 float Calculate_Loss(Matrix &predicted, Matrix &target, float delta, LossFunction loss_function);
+float Mean_Absolute_Error_Loss(Matrix &predicted, Matrix &target);
 
 #endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_LOSS_FUNCTIONS_H
