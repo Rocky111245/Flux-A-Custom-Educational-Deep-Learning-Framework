@@ -7,9 +7,8 @@
 #include "Neural_Blocks/Neural_Blocks.h"
 #include "Loss Functions/Loss_Functions.h"
 
-class Train_Block_by_Backpropagation {
-public:
-    Train_Block_by_Backpropagation(Neural_Block &neural_block, int iterations, float learning_rate = 0.01f)
+
+Train_Block_by_Backpropagation::Train_Block_by_Backpropagation(Neural_Block &neural_block, int iterations, float learning_rate )
             : neural_block(neural_block), learning_rate(learning_rate),iterations(iterations) {
 
         // Initialize data structures
@@ -26,7 +25,7 @@ public:
     }
 
     // Perform one iteration of backpropagation
-    void Train_by_Backpropagation(int iterations) {
+    void Train_Block_by_Backpropagation::Train_by_Backpropagation(int iterations) {
 
 
         // Compute gradients for output layer first
@@ -48,49 +47,10 @@ public:
     }
 
 
-private:
-    Neural_Block &neural_block;
-    float learning_rate;
-    int iterations;
 
-    struct layer_information_cache {
-        Matrix input_matrix;
-        Matrix weights_matrix;
-        Matrix bias_matrix;
-        Matrix pre_activation_values;
-        Matrix activation_outputs;
-        float cost;
-        ActivationType activation_type;
-    };
-
-    struct layer_intermediate_cache {
-        // Forward pass
-        Matrix input_values;          // X or a_prev (input to this layer)
-        Matrix pre_activation_values; // z values
-        Matrix activation_outputs;    // a values (output from this layer)
-
-        // Activation derivatives
-        Matrix activation_derivatives; // g'(z)
-
-        // Backward pass
-        Matrix dL_dz;                 // Gradient of loss w.r.t. pre-activations
-        Matrix dL_dW;                 // Gradient of loss w.r.t. weights
-        Matrix dL_db;                 // Gradient of loss w.r.t. biases
-        Matrix dL_da_prev;            // Gradient to pass to previous layer
-        Matrix dL_dy;                 // Incoming gradient from the next layer
-
-        ActivationType activation_type;
-
-        // Cached matrices for efficiency
-        Matrix W_transposed;          // Cached transposed weight matrix
-        Matrix I_transposed;          // Cached transposed input matrix
-    };
-
-    std::vector<layer_information_cache> layer_information;
-    std::vector<layer_intermediate_cache> intermediate_matrices;
 
     // Populate layer information from the neural block
-    void Populate_Layer_Information() {
+    void Train_Block_by_Backpropagation::Populate_Layer_Information() {
         int size_of_block = neural_block.Get_Block_Size();
 
         for (int layer_number = 0; layer_number < size_of_block; ++layer_number) {
@@ -114,7 +74,7 @@ private:
     }
 
     // Create intermediate matrices needed for backpropagation
-    void Create_Layer_Intermediate_Matrices() {
+    void Train_Block_by_Backpropagation::Create_Layer_Intermediate_Matrices() {
 
         int size_of_block = neural_block.Get_Block_Size();
 
@@ -172,7 +132,7 @@ private:
     }
 
     // Compute gradients for the output layer
-    void ComputeOutputLayerGradients() {
+    void Train_Block_by_Backpropagation::ComputeOutputLayerGradients() {
         // Get the last layer
         int last_layer_number= neural_block.Get_Block_Size() - 1;
 
@@ -212,7 +172,7 @@ private:
     }
 
     // Compute gradients for hidden layers
-    void ComputeHiddenLayerGradients() {
+    void Train_Block_by_Backpropagation::ComputeHiddenLayerGradients() {
 
 
         int size_of_block= neural_block.Get_Block_Size();
@@ -262,7 +222,7 @@ private:
     }
 
     // Update weights and biases using calculated gradients
-    void UpdateLayerParameters() {
+    void Train_Block_by_Backpropagation::UpdateLayerParameters() {
         int size_of_block= neural_block.Get_Block_Size();
 
         for (int layer_number = 0; layer_number < size_of_block; ++layer_number) {
@@ -280,7 +240,7 @@ private:
     }
 
 // Calculate loss gradient based on the loss function
-    void CalculateLossGradient(const Matrix& predicted, const Matrix& target, Matrix& gradient) {
+    void Train_Block_by_Backpropagation::CalculateLossGradient(const Matrix& predicted, const Matrix& target, Matrix& gradient) {
         LossFunction loss_function = neural_block.Get_Block_Loss_Type();
 
         switch (loss_function) {
@@ -347,7 +307,7 @@ private:
     }
 
 // Calculate derivatives of activation functions
-    void CalculateActivationDerivative(const Matrix& z, Matrix& derivatives, ActivationType activation_type) {
+    void Train_Block_by_Backpropagation::CalculateActivationDerivative(const Matrix& z, Matrix& derivatives, ActivationType activation_type) {
         if (z.rows() != derivatives.rows() || z.columns() != derivatives.columns()) {
             throw std::invalid_argument("Input and output matrices must have the same dimensions.");
         }
@@ -423,4 +383,3 @@ private:
                 throw std::invalid_argument("Invalid activation type for derivative calculation.");
         }
     }
-};

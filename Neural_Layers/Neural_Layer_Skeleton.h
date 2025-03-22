@@ -34,24 +34,30 @@ public:
 
     // Public member functions
     void show_layer_info() const;
+    //Deep Copying
     Neural_Layer_Skeleton& operator=(const Neural_Layer_Skeleton& other);
 
     // Getter methods
     int get_neuron_count() const;
     ActivationType get_activation_type() const;
 
+
+
 private:
-    // Private member variables
-    int neurone_number_current_layer;
-    ActivationType activationType;
+    // Private member variables. Each neurone layer must have these.To be modifiable later.
     Matrix input_matrix;
     Matrix weights_matrix;
     Matrix bias_matrix;
     Matrix pre_activation_tensor;
     Matrix post_activation_tensor;
+    Matrix output_matrix;
+    int neurone_number_current_layer;
+    ActivationType activationType;
+
 
     // Private helper functions
     static std::string ActivationTypeToString(ActivationType activation_type);
+
 
     friend class Neural_Block;
     friend class Train_Block_by_Backpropagation;

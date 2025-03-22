@@ -8,20 +8,20 @@
 // Constructor that accepts an input matrix and a list of layers, it does not have an output matrix. First block if blocks are to be connected.
 Neural_Block::Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list)
         : input_matrix(input_matrix), layers(layer_list) {
-    Construct_Matrices();
+    input_matrix_constructed = true;
 }
 
 // Constructor for blocks without predefined input. Blocks in middle
 Neural_Block::Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list)
         : layers(layer_list) {
-    Construct_Matrices();
 }
 
 // Constructor for blocks with loss function and output matrix. The last block
 Neural_Block::Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list,
                            LossFunction loss_function, Matrix& output_matrix)
         : layers(layer_list), output_matrix(output_matrix),lossFunction(loss_function)  {
-    Construct_Matrices();
+    output_matrix_constructed = true;
+    loss_function_constructed = true;
 }
 
 
@@ -29,7 +29,11 @@ Neural_Block::Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_li
 Neural_Block::Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list,
                            LossFunction loss_function, Matrix& output_matrix)
         : input_matrix(input_matrix), output_matrix(output_matrix), layers(layer_list),lossFunction(loss_function) {
+
     Construct_Matrices();
+    input_matrix_constructed = true;
+    output_matrix_constructed = true;
+    loss_function_constructed = true;
 }
 
 
@@ -49,14 +53,26 @@ void Neural_Block::Forward_Pass_With_Activation() {
     }
 }
 
-// Connect one block with another
-void Neural_Block::Connect_With(Neural_Block& block2) {
-    int last_layer = layers.size() - 1;
-    block2.layers[0].input_matrix = layers[last_layer].post_activation_tensor;
-
-    if (block2.layers[0].input_matrix.columns() != block2.layers[0].weights_matrix.rows()) {
-        std::cout << "Error: Input matrix columns do not match weight matrix rows in connected block." << std::endl;
+// Connect one block with another. It makes one new big block
+Neural_Block& Neural_Block::Connect_With(Neural_Block& block2) {
+    //connection is only possible if it is not a full block. If it is a full block, we cannot connect.
+    if(input_matrix_constructed && output_matrix_constructed && loss_function_constructed){
+        std::cerr << "Error: Cannot connect blocks if they are already complete." << std::endl;
+        exit(1);
     }
+
+    if(this->output_matrix_constructed && this->loss_function_constructed){
+        std::cerr << "Error: CANNOT connect. Output block should be the argument,not the caller." << std::endl;
+        exit(1);
+    }
+
+    layers.insert(layers.end(), block2.layers.begin(), block2.layers.end());
+    //if the block has all of these 3,this means that the connection has completed.
+    if(input_matrix_constructed && block2.output_matrix_constructed && block2.loss_function_constructed){
+        Construct_Matrices();
+    }
+    return *this;
+
 }
 
 LossFunction Neural_Block::Get_Block_Loss_Type() const{
@@ -75,6 +91,21 @@ Matrix Neural_Block::Get_Output_Matrix() const{
     return output_matrix;
 }
 
+//This returns an array[row number, column number] of the input to the layer in the block
+
+std::pair<int,int> Neural_Block::Get_Layer_Input_Information(int layer_number) const {
+    assert(layer_number<layers.size());
+
+    if(layer_number==0){
+        return {input_matrix.rows(),input_matrix.columns()};
+    }
+
+    return {layers[layer_number].input_matrix.rows(),layers[layer_number].input_matrix.columns()};
+}
+
+
+
+
 // Compute the loss for a block
 void Neural_Block::Calculate_Block_Loss() {
     int last_layer = layers.size() - 1;
@@ -85,10 +116,13 @@ void Neural_Block::Calculate_Block_Loss() {
 
 // Construct matrices for each layer
 void Neural_Block::Construct_Matrices() {
+
     for (size_t i = 0; i < layers.size(); i++) {
         if (i == 0) {
+            assert(input_matrix_constructed== true);
             layers[i].input_matrix = input_matrix;  // Initialize the first layer's input
         } else {
+            assert(input_matrix_constructed== true);
             layers[i].input_matrix = layers[i - 1].post_activation_tensor;  // Connect layers
         }
 
@@ -116,8 +150,7 @@ void Neural_Block::Compute_PostActivation_Matrix(Matrix &pre_activation_tensor_i
 }
 
 // Apply activation function
-void Neural_Block::Apply_Activation(Matrix &pre_activation_tensor_internal, Matrix &post_activation_tensor_internal,
-                                    ActivationType activation_function) {
+void Neural_Block::Apply_Activation(Matrix &pre_activation_tensor_internal, Matrix &post_activation_tensor_internal,ActivationType activation_function) {
     for (int i = 0; i < pre_activation_tensor_internal.rows(); i++) {
         for (int j = 0; j < pre_activation_tensor_internal.columns(); j++) {
             switch (activation_function) {

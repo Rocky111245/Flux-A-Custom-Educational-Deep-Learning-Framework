@@ -10,6 +10,7 @@
 #include "Neural Network Framework.h"
 #include <MatrixLibrary.h>
 #include "Loss Functions/Loss_Functions.h"
+#include <cassert>
 #include <iostream>
 
 // Enumeration for supported activation functions
@@ -22,23 +23,24 @@ public:
     Neural_Block() = default;
 
     Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list);
-    Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list,
-                 LossFunction loss_function, Matrix& output_matrix);
     Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list);
-    Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list,
-                 LossFunction loss_function, Matrix& output_matrix);
-    Neural_Block(Matrix &input_matrix, Matrix user_weights_matrix);
-    Neural_Block(Matrix &input_matrix, ActivationType activation_function);
+    Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list, LossFunction loss_function, Matrix& output_matrix);
+
+    Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list, LossFunction loss_function, Matrix& output_matrix);
+
 
     // Public Methods
     void Forward_Pass_With_Activation();
-    void Connect_With(Neural_Block& block2);
+    Neural_Block& Connect_With(Neural_Block& block2);
     void Calculate_Block_Loss();
+
+    //Getter Methods
     LossFunction Get_Block_Loss_Type() const;
     int Get_Block_Size() const;
     Neural_Layer_Skeleton Get_Layers(int layer_number) const;
     float Get_Loss() const;
     Matrix Get_Output_Matrix() const;
+    std::pair<int,int>Get_Layer_Input_Information(int layer_number) const;
 
 
 
@@ -49,6 +51,10 @@ private:
     LossFunction lossFunction;
     float loss;
     std::vector<Neural_Layer_Skeleton> layers;
+    bool input_matrix_constructed = false;
+    bool output_matrix_constructed = false;
+    bool loss_function_constructed = false;
+
 
     // Private Helper Methods
     void Compute_PreActivation_Matrix(Matrix &input_matrix_internal, Matrix &weights_matrix_internal,

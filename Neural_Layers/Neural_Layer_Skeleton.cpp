@@ -16,22 +16,6 @@ Neural_Layer_Skeleton::Neural_Layer_Skeleton(int neurone_number_in_current_layer
     }
 }
 
-
-// Public method implementation for displaying the layer configuration
-void Neural_Layer_Skeleton::show_layer_info() const {
-    std::cout << "Layer Configuration:" << std::endl;
-    std::cout << "├── Neurons: " << neurone_number_current_layer << std::endl;
-    std::cout << "└── Activation: " << ActivationTypeToString(activationType) << std::endl;
-}
-
-
-// Getter method implementation for accessing the number of neurons
-int Neural_Layer_Skeleton::get_neuron_count() const {
-    return neurone_number_current_layer;
-}
-
-
-
 Neural_Layer_Skeleton& Neural_Layer_Skeleton::operator=(const Neural_Layer_Skeleton& other) {
     if (this != &other) { // Prevent self-assignment
         this->neurone_number_current_layer = other.neurone_number_current_layer;
@@ -48,6 +32,23 @@ Neural_Layer_Skeleton& Neural_Layer_Skeleton::operator=(const Neural_Layer_Skele
 }
 
 
+
+
+// Public method implementation for displaying the layer configuration
+void Neural_Layer_Skeleton::show_layer_info() const {
+    std::cout << "Layer Configuration:" << std::endl;
+    std::cout << "├── Neurons: " << neurone_number_current_layer << std::endl;
+    std::cout << "└── Activation: " << ActivationTypeToString(activationType) << std::endl;
+    std::cout<< std::endl;
+}
+
+
+
+
+// Getter method implementation for accessing the number of neurons
+int Neural_Layer_Skeleton::get_neuron_count() const {
+    return neurone_number_current_layer;
+}
 
 // Getter method implementation for accessing the activation type
 ActivationType Neural_Layer_Skeleton::get_activation_type() const {
@@ -70,7 +71,7 @@ std::string Neural_Layer_Skeleton::ActivationTypeToString(ActivationType activat
         case ActivationType::LINEAR:
             return "LINEAR";
         default:
-            return "UNKNOWN";
+            throw std::invalid_argument("Invalid activation type");
     }
-}
 
+}
