@@ -7,11 +7,12 @@
 
 #include "Neural_Layers/Neural_Layer_Skeleton.h"
 #include "Neural_Blocks.h"
-#include "Neural Network Framework.h"
+
 #include <MatrixLibrary.h>
-#include "Loss Functions/Loss_Functions.h"
+#include "Loss_Functions/Loss_Functions.h"
 #include <cassert>
 #include <iostream>
+#include "Matrix_Dimension_Checks/Matrix_Assertion_Checks.h"
 
 // Enumeration for supported activation functions
 
@@ -35,12 +36,17 @@ public:
     void Calculate_Block_Loss();
 
     //Getter Methods
+    bool Get_Block_Status() const;
     LossFunction Get_Block_Loss_Type() const;
     int Get_Block_Size() const;
-    Neural_Layer_Skeleton Get_Layers(int layer_number) const;
+    const Neural_Layer_Skeleton &Get_Layers(int layer_number) const;
     float Get_Loss() const;
     Matrix Get_Output_Matrix() const;
     std::pair<int,int>Get_Layer_Input_Information(int layer_number) const;
+    Matrix& Get_Weights_Matrix(int layer_number);
+    Matrix& Get_Bias_Matrix(int layer_number);
+
+    Neural_Layer_Skeleton& Set_Layers(int layer_number);
 
 
 
@@ -64,6 +70,10 @@ private:
     void Apply_Activation(Matrix &pre_activation_tensor_internal, Matrix &post_activation_tensor_internal,
                           ActivationType activation_function);
     void Construct_Matrices();
+    float ApplyActivationFunction(float value, ActivationType activation_type);
+
 };
+
+
 
 #endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_BLOCKS_H

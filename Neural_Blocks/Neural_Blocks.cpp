@@ -2,6 +2,7 @@
 // Created by rakib on 14/2/2025.
 //
 
+#include <iomanip>
 #include "Neural_Blocks.h"
 
 
@@ -29,17 +30,38 @@ Neural_Block::Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_li
 Neural_Block::Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list,
                            LossFunction loss_function, Matrix& output_matrix)
         : input_matrix(input_matrix), output_matrix(output_matrix), layers(layer_list),lossFunction(loss_function) {
-
-    Construct_Matrices();
     input_matrix_constructed = true;
     output_matrix_constructed = true;
     loss_function_constructed = true;
+    Construct_Matrices();
+
 }
 
 
-Neural_Layer_Skeleton Neural_Block::Get_Layers(int layer_number) const{
+const Neural_Layer_Skeleton &Neural_Block::Get_Layers(int layer_number) const{
     return layers[layer_number];
 }
+
+Neural_Layer_Skeleton &Neural_Block::Set_Layers(int layer_number) {
+    return layers[layer_number];
+}
+
+Matrix& Neural_Block::Get_Weights_Matrix(int layer_number) {
+        return layers[layer_number].weights_matrix;
+}
+
+Matrix& Neural_Block::Get_Bias_Matrix(int layer_number) {
+    return layers[layer_number].bias_matrix;
+}
+
+bool Neural_Block::Get_Block_Status() const{
+    if(input_matrix_constructed && output_matrix_constructed && loss_function_constructed){
+        return true;
+    }
+    return false;
+}
+
+
 
 
 // Perform forward pass with activation
@@ -87,6 +109,8 @@ float Neural_Block::Get_Loss() const{
     return loss;
 }
 
+
+
 Matrix Neural_Block::Get_Output_Matrix() const{
     return output_matrix;
 }
@@ -117,30 +141,39 @@ void Neural_Block::Calculate_Block_Loss() {
 // Construct matrices for each layer
 void Neural_Block::Construct_Matrices() {
 
+
     for (size_t i = 0; i < layers.size(); i++) {
         if (i == 0) {
-            assert(input_matrix_constructed== true);
+
+
             layers[i].input_matrix = input_matrix;  // Initialize the first layer's input
+
         } else {
-            assert(input_matrix_constructed== true);
+
             layers[i].input_matrix = layers[i - 1].post_activation_tensor;  // Connect layers
         }
 
         //all matrices initialized to zero
         layers[i].weights_matrix = Matrix(layers[i].get_neuron_count(), layers[i].input_matrix.columns(), 0.0f);
         Matrix_Xavier_Uniform(layers[i].weights_matrix);
-        layers[i].bias_matrix = Matrix(layers[i].input_matrix.rows(), layers[i].weights_matrix.columns(), 0.0f);
-        layers[i].pre_activation_tensor = Matrix(layers[i].input_matrix.rows(), layers[i].weights_matrix.columns(), 0.0f);
-        layers[i].post_activation_tensor = Matrix(layers[i].input_matrix.rows(), layers[i].weights_matrix.columns(), 0.0f);
+
+        layers[i].bias_matrix = Matrix(layers[i].input_matrix.rows(), layers[i].get_neuron_count(), 0.0f);
+        layers[i].pre_activation_tensor = Matrix(layers[i].input_matrix.rows(), layers[i].get_neuron_count(), 0.0f);
+        layers[i].post_activation_tensor = Matrix(layers[i].input_matrix.rows(), layers[i].get_neuron_count(), 0.0f);
+
     }
 }
 
 // Compute pre-activation matrix
-void Neural_Block::Compute_PreActivation_Matrix(Matrix &input_matrix_internal, Matrix &weights_matrix_internal,
-                                                Matrix &bias_matrix_internal, Matrix &pre_activation_tensor_internal) {
-    Matrix_Transpose(weights_matrix_internal, weights_matrix_internal);
-    Matrix_Multiply(pre_activation_tensor_internal, input_matrix_internal, weights_matrix_internal);
+void Neural_Block::Compute_PreActivation_Matrix(Matrix &input_matrix_internal, Matrix &weights_matrix_internal,Matrix &bias_matrix_internal, Matrix &pre_activation_tensor_internal) {
+
+    Matrix transposed_weights(weights_matrix_internal.columns(), weights_matrix_internal.rows(),0.0f);
+    Matrix_Transpose(transposed_weights,weights_matrix_internal);
+    assert(Matrix_Can_Multiply(pre_activation_tensor_internal, input_matrix_internal, transposed_weights));
+    Matrix_Multiply(pre_activation_tensor_internal, input_matrix_internal, transposed_weights);
+    assert(Matrix_Can_AddOrSubtract(pre_activation_tensor_internal, pre_activation_tensor_internal, bias_matrix_internal));
     Matrix_Add(pre_activation_tensor_internal, pre_activation_tensor_internal, bias_matrix_internal);
+
 }
 
 // Compute post-activation matrix
@@ -149,32 +182,42 @@ void Neural_Block::Compute_PostActivation_Matrix(Matrix &pre_activation_tensor_i
     Apply_Activation(pre_activation_tensor_internal, post_activation_tensor_internal, activation_function_internal);
 }
 
-// Apply activation function
-void Neural_Block::Apply_Activation(Matrix &pre_activation_tensor_internal, Matrix &post_activation_tensor_internal,ActivationType activation_function) {
+// Updated Neural_Block::Apply_Activation method
+void Neural_Block::Apply_Activation(Matrix &pre_activation_tensor_internal,
+                                    Matrix &post_activation_tensor_internal,
+                                    ActivationType activation_function) {
     for (int i = 0; i < pre_activation_tensor_internal.rows(); i++) {
         for (int j = 0; j < pre_activation_tensor_internal.columns(); j++) {
-            switch (activation_function) {
-                case ActivationType::RELU:
-                    post_activation_tensor_internal(i, j) = Neural_Layer::ReLU(pre_activation_tensor_internal(i, j));
-                    break;
-                case ActivationType::SIGMOID:
-                    post_activation_tensor_internal(i, j) = Neural_Layer::Sigmoid_Function(pre_activation_tensor_internal(i, j));
-                    break;
-                case ActivationType::TANH:
-                    post_activation_tensor_internal(i, j) = Neural_Layer::Tanh(pre_activation_tensor_internal(i, j));
-                    break;
-                case ActivationType::LEAKY_RELU:
-                    post_activation_tensor_internal(i, j) = Neural_Layer::LeakyReLU(pre_activation_tensor_internal(i, j));
-                    break;
-                case ActivationType::SWISH:
-                    post_activation_tensor_internal(i, j) = Neural_Layer::Swish(pre_activation_tensor_internal(i, j));
-                    break;
-                case ActivationType::LINEAR:
-                    post_activation_tensor_internal(i, j) = Neural_Layer::Linear_Activation(pre_activation_tensor_internal(i, j));
-                    break;
-                default:
-                    throw std::invalid_argument("Invalid activation function.");
-            }
+            post_activation_tensor_internal(i, j) = ApplyActivationFunction(
+                    pre_activation_tensor_internal(i, j),
+                    activation_function
+            );
         }
     }
 }
+
+// Apply activation function to a single value
+float Neural_Block::ApplyActivationFunction(float value, ActivationType activation_type) {
+    switch (activation_type) {
+        case ActivationType::RELU:
+            return value > 0 ? value : 0;
+        case ActivationType::SIGMOID:
+            return 1.0f / (1.0f + std::exp(-value));
+        case ActivationType::TANH:
+            return std::tanh(value);
+        case ActivationType::LEAKY_RELU:
+            return value > 0 ? value : 0.01f * value;
+        case ActivationType::SWISH:
+            return value * (1.0f / (1.0f + std::exp(-value)));
+        case ActivationType::LINEAR:
+            return value;
+        default:
+            throw std::invalid_argument("Invalid activation function.");
+    }
+}
+
+
+
+
+
+

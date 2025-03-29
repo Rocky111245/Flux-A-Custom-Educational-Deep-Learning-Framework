@@ -1,48 +1,57 @@
 cmake_minimum_required(VERSION 3.26)
-project(_Discriminative_Dense_Neural_Network_Framework)
+project(FLUX)
 
 set(CMAKE_CXX_STANDARD 23)
 
+# Include directories for header files
 include_directories(${CMAKE_SOURCE_DIR})  # Add the root directory to header search paths
 
-# Main Neural Network executable (without Tokenizer.cpp)
-add_executable(_Discriminative_Dense_Neural_Network_Framework
-        main.cpp
-        "Neural Network Framework.cpp"
-        "Neural Network Framework.h"
-        "MSEGraphPlotter.cpp"
-        "MSEGraphPlotter.h"
-        "NNStructureVis .cpp"
-        "NNStructureVis .h"
-        "Loss Functions/Loss_Functions.cpp"
-        "Loss Functions/Loss_Functions.h"
-        "Forward Pass/Forward_Pass.cpp"
-        "Forward Pass/Forward_Pass.h"
+# Define source files grouped by directory
+
+
+set(LOSS_FUNCTIONS_SRC
+        "Loss_Functions/Loss_Functions.cpp"
+)
+
+set(NEURAL_BLOCKS_SRC
         "Neural_Blocks/Neural_Blocks.cpp"
-        "Neural_Blocks/Neural_Blocks.h"
-        "Initialize Weights/Initialize_Weights.cpp"
-        "Initialize Weights/Initialize_Weights.h"
-        "Neural_Layers/Neural_Layer_Skeleton.cpp"  # Corrected path
-        "Neural_Layers/Neural_Layer_Skeleton.h"
-        "Optimization Algorithms/Train_Block_by_Backpropagation.cpp"
-        "Optimization Algorithms/Train_Block_by_Backpropagation.h"    # Corrected path
 )
 
-# Tokenizer executable using the existing Tokenizer.cpp with main()
-add_executable(Tokenizer
-        "NLP Utilities/Tokenizer.cpp"
-
+set(NEURAL_LAYERS_SRC
+        "Neural_Layers/Neural_Layer_Skeleton.cpp"
 )
 
-# Common settings for both executables
-foreach(TARGET _Discriminative_Dense_Neural_Network_Framework Tokenizer)
-    target_include_directories(${TARGET} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks")
-    target_link_directories(${TARGET} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug")
-    target_link_libraries(${TARGET} PRIVATE libMatrixLibrary)
+set(OPTIMIZATION_ALGORITHMS_SRC
+        "Optimization_Algorithms/Train_Block_by_Backpropagation.cpp"
+)
 
-    add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug/libMatrixLibrary.dll"
-            $<TARGET_FILE_DIR:${TARGET}>
-    )
-endforeach()
+set(UTILITY_FUNCTIONS_SRC
+        "Utility_Functions/Utility_Functions.cpp")
+
+set(MATRIX_DIMENSION_CHECKS_SRC
+        "Matrix_Dimension_Checks/Matrix_Assertion_Checks.cpp")
+
+# Main executable
+add_executable(${PROJECT_NAME}
+        main.cpp
+
+
+        ${LOSS_FUNCTIONS_SRC}
+        ${NEURAL_BLOCKS_SRC}
+        ${NEURAL_LAYERS_SRC}
+        ${OPTIMIZATION_ALGORITHMS_SRC}
+        ${MATRIX_DIMENSION_CHECKS_SRC}
+        ${UTILITY_FUNCTIONS_SRC}
+)
+
+# Matrix library dependency
+target_include_directories(${PROJECT_NAME} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks")
+target_link_directories(${PROJECT_NAME} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug")
+target_link_libraries(${PROJECT_NAME} PRIVATE libMatrixLibrary)
+
+# Copy the Matrix Library DLL to the output directory after build
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug/libMatrixLibrary.dll"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
