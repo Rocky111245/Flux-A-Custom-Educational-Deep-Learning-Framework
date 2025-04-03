@@ -143,7 +143,7 @@ This architecture allows for a clear and modular approach to neural network desi
 
    **Example Usage**:
    ```cpp
-   auto neural_network = Form_Network({8, 4, 1}, input_matrix, output_matrix, 
+   auto neural_network = Form_Network({8, 4, 1}, input_matrix, target_matrix, 
                                       ActivationType::LEAKY_RELU, ActivationType::SIGMOID);
    ```
 

@@ -15,7 +15,7 @@
 class Train_Block_by_Backpropagation {
 public:
 
-    // Caching structures for layer information
+    // Caching structures for layer information. This will also come in handy once we flatten the matrix
     struct layer_information_cache {
         Matrix input_matrix;
         Matrix weights_matrix;
@@ -40,24 +40,21 @@ public:
         Matrix dL_dz;                 // Gradient of loss w.r.t. pre-activations
         Matrix dL_dW;                 // Gradient of loss w.r.t. weights
         Matrix dL_db;                 // Gradient of loss w.r.t. biases
-        Matrix dL_da_upper_layer;     // Gradient to pass to lower layer
+        Matrix dL_da_upper;                 // Gradient to pass to lower layer
         Matrix dL_dy;                 // Incoming gradient from the next layer
         // Cached matrices for efficiency
+        Matrix W;                     // Cached weight matrix
         Matrix W_transposed;          // Cached transposed weight matrix
         Matrix I_transposed;          // Cached transposed input matrix
-        Matrix y_pred;
-        Matrix y_true;
+        Matrix y_pred;                // Only for last layers
+        Matrix y_true;                // Only for last layers
 
         ActivationType activation_type;
 
 
     };
 
-    // Intermediate calculations for backpropagation. Computational artifacts needed specifically for backpropagation
-    struct output_layer_cache {
-        Matrix y_pred;
-        Matrix y_true;
-    };
+
 
 
     // Constructor
@@ -88,20 +85,18 @@ private:
     // Storage for layer information and intermediate calculations
     std::vector<layer_information_cache> layer_information;
     std::vector<layer_intermediate_cache> intermediate_matrices;
-    output_layer_cache output_layer_matrices;
+
 
     // Private helper methods
     void Populate_Layer_Information();
-    void Create_Layer_Intermediate_Matrices();
-    void ComputeOutputLayerGradients();
-    void ComputeHiddenLayerGradients();
+    void Initialize_Layer_Intermediate_Matrices();
+    void ComputeAllLayerGradients();
     void UpdateLayerParameters();
     void CalculateLossGradient(Matrix& gradient,const Matrix& predicted, const Matrix& target);
     void CalculateActivationDerivative(Matrix& derivatives,const Matrix& z,ActivationType activation_type) ;
-    void UpdateLayerInformation();
 
 
-
+    void Matrix_Sum_Columns_To_One_Row(Matrix &dest, const Matrix &src);
 };
 
 

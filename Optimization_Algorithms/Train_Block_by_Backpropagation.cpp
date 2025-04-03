@@ -14,7 +14,7 @@ Train_Block_by_Backpropagation::Train_Block_by_Backpropagation(Neural_Block &neu
 
     Populate_Layer_Information();
 
-    Create_Layer_Intermediate_Matrices();
+    Initialize_Layer_Intermediate_Matrices();
 
     Train_by_Backpropagation();
 
@@ -23,8 +23,6 @@ Train_Block_by_Backpropagation::Train_Block_by_Backpropagation(Neural_Block &neu
 // Perform one iteration of backpropagation
 void Train_Block_by_Backpropagation::Train_by_Backpropagation() {
 
-    DisplayNeuralLayerMatrices(*this);
-    DisplayBackpropagationGradients(*this);
     for (int i = 0; i < iterations; ++i) {
         // Perform forward pass
         // Perform forward pass for each iteration
@@ -32,14 +30,12 @@ void Train_Block_by_Backpropagation::Train_by_Backpropagation() {
 
 
         // Compute gradients
-        ComputeOutputLayerGradients();
-        ComputeHiddenLayerGradients();
+        ComputeAllLayerGradients();
 
         // Update weights and biases
         UpdateLayerParameters();
-        UpdateLayerInformation();
 
-        std::cout << "Iteration " << i << ", Loss: " << cost << std::endl;
+        std::cout << "Iteration " << i << ", Loss: " << neural_block.Get_Block_Loss() << std::endl;
 
 
     }
@@ -57,50 +53,51 @@ void Train_Block_by_Backpropagation::Populate_Layer_Information() {
 
     for (int layer_number = 0; layer_number < size_of_block; ++layer_number) {
 
-        //for last layer
-        if (layer_number == size_of_block-1) {
-            neural_block.Calculate_Block_Loss();
-            cost = neural_block.Get_Loss();
-            std::cout<<"Initial Cost: "<<cost<<std::endl;
-
-        }
-
         //This resizes the left hand matrix to the right hand side (ground truth) if they are not the correct size.
-        layer_information[layer_number].input_matrix = neural_block.Get_Layers(layer_number).input_matrix;
-        layer_information[layer_number].weights_matrix = neural_block.Get_Layers(layer_number).weights_matrix;
-        layer_information[layer_number].bias_matrix = neural_block.Get_Layers(layer_number).bias_matrix;
-        layer_information[layer_number].pre_activation_tensor = neural_block.Get_Layers(layer_number).pre_activation_tensor;
-        layer_information[layer_number].post_activation_tensor = neural_block.Get_Layers(layer_number).post_activation_tensor;
-
-
-        layer_information[layer_number].activation_type = neural_block.Get_Layers(layer_number).activationType;
-        assert(layer_information[layer_number].activation_type == neural_block.Get_Layers(layer_number).activationType);
-
+        layer_information[layer_number].input_matrix = neural_block.Get_Block_Layers(layer_number).input_matrix;
+        //Debug_Matrix(layer_information[layer_number].input_matrix, "Input Matrix");
+        layer_information[layer_number].weights_matrix = neural_block.Get_Block_Layers(layer_number).weights_matrix;
+        //Debug_Matrix(layer_information[layer_number].weights_matrix, "Weights Matrix");
+        layer_information[layer_number].bias_matrix = neural_block.Get_Block_Layers(layer_number).bias_matrix;
+        //Debug_Matrix(layer_information[layer_number].bias_matrix, "Bias Matrix");
+        layer_information[layer_number].pre_activation_tensor = neural_block.Get_Block_Layers(layer_number).pre_activation_tensor;
+        //Debug_Matrix(layer_information[layer_number].pre_activation_tensor, "Pre Activation Matrix");
+        layer_information[layer_number].post_activation_tensor = neural_block.Get_Block_Layers(layer_number).post_activation_tensor;
+        //Debug_Matrix(layer_information[layer_number].post_activation_tensor, "Post Activation Matrix");
+        layer_information[layer_number].activation_type = neural_block.Get_Block_Layers(layer_number).activationType;
 
     }
 }
 
+
 // Create intermediate matrices needed for backpropagation
-void Train_Block_by_Backpropagation::Create_Layer_Intermediate_Matrices() {
+void Train_Block_by_Backpropagation::Initialize_Layer_Intermediate_Matrices() {
 
     int size_of_block = neural_block.Get_Block_Size();
+    int last_layer_number = size_of_block - 1;
 
     for (int layer_number = 0; layer_number < size_of_block; ++layer_number) {
 
         // Input values reference
-        intermediate_matrices[layer_number].input_values = layer_information[layer_number].input_matrix;
-
-
-
         // Forward pass matrices
+        intermediate_matrices[layer_number].input_values = layer_information[layer_number].input_matrix;
         intermediate_matrices[layer_number].pre_activation_tensor = layer_information[layer_number].pre_activation_tensor;
-
         intermediate_matrices[layer_number].post_activation_tensor = layer_information[layer_number].post_activation_tensor;
-
         intermediate_matrices[layer_number].activation_type = layer_information[layer_number].activation_type;
         std::cout<<"activation type: "<<Neural_Layer_Skeleton::ActivationTypeToString(intermediate_matrices[layer_number].activation_type)<<std::endl;
 
+
+
+
         // Activation derivatives all set to 0
+
+        //dL_dy matrice = dL_da_upper matrices for output layer
+        intermediate_matrices[layer_number].dL_dy = Matrix(
+                layer_information[layer_number].post_activation_tensor.rows(),
+                layer_information[layer_number].post_activation_tensor.columns(),
+                0.0f
+        );
+
         intermediate_matrices[layer_number].da_dz = Matrix(
                 layer_information[layer_number].post_activation_tensor.rows(),
                 layer_information[layer_number].post_activation_tensor.columns(),
@@ -120,209 +117,209 @@ void Train_Block_by_Backpropagation::Create_Layer_Intermediate_Matrices() {
                 0.0f
         );
 
+        // Bias gradients have the same matrix as dL_dz
         intermediate_matrices[layer_number].dL_db = Matrix(
                 layer_information[layer_number].bias_matrix.rows(),
                 layer_information[layer_number].bias_matrix.columns(),
                 0.0f
         );
 
-        intermediate_matrices[layer_number].dL_da_upper_layer = Matrix(
-                layer_information[layer_number].input_matrix.rows(),
-                layer_information[layer_number].input_matrix.columns(),
+        //This gradient goes to the previous layer. dL_da_upper= dL_dz* dz_da
+
+        if(layer_number>0){
+            intermediate_matrices[layer_number-1].dL_da_upper = Matrix(
+                    layer_information[layer_number].input_matrix.rows(),
+                    layer_information[layer_number].input_matrix.columns(),
+                    0.0f
+            );
+        }
+
+
+        // Cached matrices
+
+        intermediate_matrices[layer_number].W= Matrix(
+                layer_information[layer_number].weights_matrix.rows(),
+                layer_information[layer_number].weights_matrix.columns(),
                 0.0f
         );
+        intermediate_matrices[layer_number].W= layer_information[layer_number].weights_matrix;
 
-        intermediate_matrices[layer_number].dL_dy = Matrix(
-                layer_information[layer_number].post_activation_tensor.rows(),
-                layer_information[layer_number].post_activation_tensor.columns(),
-                0.0f
-        );
+        // Transpose matrices
+        intermediate_matrices[layer_number].W_transposed= Matrix(
+                layer_information[layer_number].weights_matrix.columns(),
+                layer_information[layer_number].weights_matrix.rows()
+                );
 
 
-        // Cached inverted matrices
-        intermediate_matrices[layer_number].W_transposed= Matrix(layer_information[layer_number].weights_matrix.columns(),layer_information[layer_number].weights_matrix.rows());
-        intermediate_matrices[layer_number].I_transposed= Matrix(layer_information[layer_number].input_matrix.columns(),layer_information[layer_number].input_matrix.rows());
         Matrix_Transpose(intermediate_matrices[layer_number].W_transposed, layer_information[layer_number].weights_matrix);
+
+
+        intermediate_matrices[layer_number].I_transposed= Matrix(
+                layer_information[layer_number].input_matrix.columns(),
+                layer_information[layer_number].input_matrix.rows()
+                );
+
         Matrix_Transpose(intermediate_matrices[layer_number].I_transposed, layer_information[layer_number].input_matrix);
+
+
+    }
+    if(size_of_block>0){
+        intermediate_matrices[last_layer_number].y_pred = intermediate_matrices[last_layer_number].post_activation_tensor;
+        intermediate_matrices[last_layer_number].y_true = neural_block.Get_Block_Target_Matrix();
     }
 }
 
 // Compute gradients for the output layer
-void Train_Block_by_Backpropagation::ComputeOutputLayerGradients() {
+void Train_Block_by_Backpropagation::ComputeAllLayerGradients() {
 
     int size_of_block = neural_block.Get_Block_Size();
-    // Get the last layer
-    int last_layer_number= size_of_block - 1;
+    int output_layer = size_of_block - 1;
 
-    output_layer_matrices.y_pred = layer_information[last_layer_number].post_activation_tensor;
-    output_layer_matrices.y_true = neural_block.Get_Output_Matrix();
-
-    // 1. Calculate gradient of loss with respect to the output (dL/dy)
-    CalculateLossGradient( intermediate_matrices[last_layer_number].dL_dy,output_layer_matrices.y_pred ,output_layer_matrices.y_true);
-
-    // 2. Calculate activation function derivative
-    CalculateActivationDerivative(
-            intermediate_matrices[last_layer_number].da_dz,
-            intermediate_matrices[last_layer_number].pre_activation_tensor,
-            intermediate_matrices[last_layer_number].activation_type
-    );
-
-    // 3. Calculate gradient of loss with respect to pre-activation (dL/dz)
-    // dL/dz = dL/dy * g'(z)
-    assert(Matrix_Can_HadamardProduct(intermediate_matrices[last_layer_number].dL_dz,
-                                      intermediate_matrices[last_layer_number].dL_dy,
-                                      intermediate_matrices[last_layer_number].da_dz));
-    Matrix_Hadamard_Product(
-            intermediate_matrices[last_layer_number].dL_dz,
-            intermediate_matrices[last_layer_number].dL_dy,
-            intermediate_matrices[last_layer_number].da_dz
-    );
-
-
-    // 4. Calculate gradient of loss with respect to weights (dL/dW)
-
-
-    // dL/dW = (input)^T * dL/dz
-    if(intermediate_matrices[last_layer_number].dL_dW.rows()==layer_information[last_layer_number].weights_matrix.rows() &&
-       intermediate_matrices[last_layer_number].dL_dW.columns()==layer_information[last_layer_number].weights_matrix.columns()){
-        Matrix_Resize(intermediate_matrices[last_layer_number].dL_dW,layer_information[last_layer_number].weights_matrix.columns(),
-                      layer_information[last_layer_number].weights_matrix.rows());//this is just to resize the matrix so that it can
-        // be multiplied
+    for(int i = 0; i < size_of_block; ++i){
+//        std::cout<<"After Forward Pass,one Round, Layer:  "<<i<<std::endl;
+//        Debug_Matrix(intermediate_matrices[i].input_values , "Input Matrix");
+//        Debug_Matrix(intermediate_matrices[i].W, "Weights Matrix");
+//        Debug_Matrix(intermediate_matrices[i].W_transposed, "Weights Transposed Matrix");
+//        Debug_Matrix(intermediate_matrices[i].I_transposed, "Input Transposed Matrix");
+//        Debug_Matrix(intermediate_matrices[i].pre_activation_tensor, "Pre Activation Matrix");
+//        Debug_Matrix(intermediate_matrices[i].post_activation_tensor, "Post Activation Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_dy, "dL_dy Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_dz, "dL_dz Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_dW, "dL_dW Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_db, "dL_db Matrix");
+//        Debug_Matrix(intermediate_matrices[i].da_dz, "da_dz Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_da_upper, "dL_da_upper Matrix");
     }
-    assert(Matrix_Can_Multiply(intermediate_matrices[last_layer_number].dL_dW, intermediate_matrices[last_layer_number].I_transposed, intermediate_matrices[last_layer_number].dL_dz));
-    Matrix_Multiply(intermediate_matrices[last_layer_number].dL_dW, intermediate_matrices[last_layer_number].I_transposed, intermediate_matrices[last_layer_number].dL_dz);
-    Matrix temp=intermediate_matrices[last_layer_number].dL_dW;
-    Matrix_Resize(intermediate_matrices[last_layer_number].dL_dW,layer_information[last_layer_number].weights_matrix.rows(),
-                  layer_information[last_layer_number].weights_matrix.columns());
-    Matrix_Transpose(intermediate_matrices[last_layer_number].dL_dW, temp);
 
 
-    // 5. Calculate gradient of loss with respect to biases (dL/db)
-    // dL/db = dL/dz
-    intermediate_matrices[last_layer_number].dL_db=intermediate_matrices[last_layer_number].dL_dz;
+    // Start with output layer
+    // Calculate gradient of loss with respect to the output.dL_dy = dL_da (output layer only)
+    CalculateLossGradient(
+            intermediate_matrices[output_layer].dL_dy,
+            intermediate_matrices[output_layer].y_pred,
+            intermediate_matrices[output_layer].y_true
+    );
 
-}
+    // Process all layers from output to input
+    for(int i = output_layer; i >= 0; i--) {
 
-// Compute gradients for hidden layers
-void Train_Block_by_Backpropagation::ComputeHiddenLayerGradients() {
-    int size_of_block= neural_block.Get_Block_Size();
 
-    // 1. Get gradient from the output layer (dL/da)
-    for(int layer_number = size_of_block - 2; layer_number >= 0; --layer_number) {
-
+        // 1. Calculate activation function derivative da_dz
         CalculateActivationDerivative(
-                // 2. Calculate activation function derivative
-                intermediate_matrices[layer_number].da_dz,
-                intermediate_matrices[layer_number].pre_activation_tensor,
-                intermediate_matrices[layer_number].activation_type
+                intermediate_matrices[i].da_dz,
+                intermediate_matrices[i].pre_activation_tensor,
+                intermediate_matrices[i].activation_type
         );
 
-        // 3. Calculate gradient of loss with respect to pre-activation (dL/dz)
-        // dL/dz = dL/da * g'(z)
-
-
-        assert(Matrix_Can_HadamardProduct(intermediate_matrices[layer_number].dL_dz,
-                                          intermediate_matrices[layer_number].dL_da_upper_layer,
-                                          intermediate_matrices[layer_number].da_dz));
-        Matrix_Hadamard_Product(
-                intermediate_matrices[layer_number].dL_dz,
-                intermediate_matrices[layer_number].dL_da_upper_layer,
-                intermediate_matrices[layer_number].da_dz
-        );
-
-        //4.  After calculating dL_dz for the output layer (last_layer_number)
-        // Propagate to previous layer if it exists.Basically this means if the last layer number is more than 0, it means there is a layer before the output layer since 0 is the last layer.
-        if (layer_number > 0) {
-            assert(Matrix_Can_Multiply(intermediate_matrices[layer_number-1].dL_da_upper_layer,
-                                       intermediate_matrices[layer_number].dL_dz,
-                                       intermediate_matrices[layer_number].W_transposed));
-            Matrix_Multiply(
-                    intermediate_matrices[layer_number-1].dL_da_upper_layer,
-                    intermediate_matrices[layer_number].dL_dz,
-                    intermediate_matrices[layer_number].W_transposed
+        // 2. Calculate gradient of loss with respect to pre-activation.
+        if(i == output_layer) {
+            assert(Matrix_Can_HadamardProduct(intermediate_matrices[i].dL_dz,
+                                              intermediate_matrices[i].dL_dy,
+                                              intermediate_matrices[i].da_dz));
+            Matrix_Hadamard_Product(
+                    intermediate_matrices[i].dL_dz,
+                    intermediate_matrices[i].dL_dy,
+                    intermediate_matrices[i].da_dz
             );
+        } else {
+            assert(Matrix_Can_HadamardProduct(intermediate_matrices[i].dL_dz,
+                                              intermediate_matrices[i].dL_da_upper,
+                                              intermediate_matrices[i].da_dz));
+            Matrix_Hadamard_Product(
+                    intermediate_matrices[i].dL_dz,
+                    intermediate_matrices[i].dL_da_upper,
+                    intermediate_matrices[i].da_dz
+            );
+
         }
 
-        // 5. Calculate gradient of loss with respect to weights (dL/dW)
-        // dL/dW = (input)^T * dL/dz
+        // 3. Calculate gradients with respect to weights and biases. dl_dW has the same shape as the weight matrix.However, during multiplication, a different order is required. So temp was created.
+        Matrix temp_dL_dW(intermediate_matrices[i].dL_dW.columns(), intermediate_matrices[i].dL_dW.rows());// to accomodate the transpose
+        assert(Matrix_Can_Multiply(temp_dL_dW,
+                                   intermediate_matrices[i].I_transposed,
+                                   intermediate_matrices[i].dL_dz));
+        Matrix_Multiply(temp_dL_dW, intermediate_matrices[i].I_transposed, intermediate_matrices[i].dL_dz);  // (7×1)
+        Matrix_Transpose(intermediate_matrices[i].dL_dW, temp_dL_dW);               // Now (1×7), matches the W shape
 
-// dL/dW = (input)^T * dL/dz
-        if(intermediate_matrices[layer_number].dL_dW.rows()==layer_information[layer_number].weights_matrix.rows() &&
-           intermediate_matrices[layer_number].dL_dW.columns()==layer_information[layer_number].weights_matrix.columns()){
-            Matrix_Resize(intermediate_matrices[layer_number].dL_dW,layer_information[layer_number].weights_matrix.columns(),
-                          layer_information[layer_number].weights_matrix.rows());//this is just to resize the matrix so that it can
-            // be multiplied
+
+
+
+
+        // Later, after dL_dz has been calculated,we find the gradient of the loss with respect to the biases.
+        Matrix_Sum_Columns_To_One_Row(intermediate_matrices[i].dL_db, intermediate_matrices[i].dL_dz);
+
+
+        // 4. Propagate gradients to previous layer if it exists. dl_da_upper has the same shape as the input matrix to this layer.However, during multiplication, a different order is required. So temp was created.
+        if (i > 0) {
+
+            assert(Matrix_Can_Multiply(intermediate_matrices[i-1].dL_da_upper,
+                                       intermediate_matrices[i].dL_dz,
+                                       intermediate_matrices[i].W));
+            Matrix_Multiply(
+                    intermediate_matrices[i-1].dL_da_upper,
+                    intermediate_matrices[i].dL_dz,
+                    intermediate_matrices[i].W
+            );
+
         }
-        assert(Matrix_Can_Multiply(intermediate_matrices[layer_number].dL_dW, intermediate_matrices[layer_number].I_transposed, intermediate_matrices[layer_number].dL_dz));
-        Matrix_Multiply(intermediate_matrices[layer_number].dL_dW, intermediate_matrices[layer_number].I_transposed, intermediate_matrices[layer_number].dL_dz);
-
-        Matrix temp=intermediate_matrices[layer_number].dL_dW;
-        Matrix_Resize(intermediate_matrices[layer_number].dL_dW,layer_information[layer_number].weights_matrix.rows(),
-                      layer_information[layer_number].weights_matrix.columns());
-        Matrix_Transpose(intermediate_matrices[layer_number].dL_dW, temp);
-
-
-        // 5. Calculate gradient of loss with respect to biases (dL/db)
-        // dL/db = dL/dz (sum across batch)
-        intermediate_matrices[layer_number].dL_db=intermediate_matrices[layer_number].dL_dz;
+//        std::cout<<"After Gradient Calculations,One Round, Layer:  "<<i<<std::endl;
+//
+//        Debug_Matrix(intermediate_matrices[i].input_values , "Input Matrix");
+//        Debug_Matrix(intermediate_matrices[i].W, "Weights Matrix");
+//        Debug_Matrix(intermediate_matrices[i].W_transposed, "Weights Transposed Matrix");
+//        Debug_Matrix(intermediate_matrices[i].I_transposed, "Input Transposed Matrix");
+//        Debug_Matrix(intermediate_matrices[i].pre_activation_tensor, "Pre Activation Matrix");
+//        Debug_Matrix(intermediate_matrices[i].post_activation_tensor, "Post Activation Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_dy, "dL_dy Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_dz, "dL_dz Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_dW, "dL_dW Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_db, "dL_db Matrix");
+//        Debug_Matrix(intermediate_matrices[i].da_dz, "da_dz Matrix");
+//        Debug_Matrix(intermediate_matrices[i].dL_da_upper, "dL_da_upper Matrix");
     }
-
-
 }
+
+
 
 // Update weights and biases using calculated gradients
 void Train_Block_by_Backpropagation::UpdateLayerParameters() {
-    int size_of_block= neural_block.Get_Block_Size();
-
+    int size_of_block = neural_block.Get_Block_Size();
 
     for (int layer_number = 0; layer_number < size_of_block; ++layer_number) {
-        // Update weights: W = W - learning_rate * dL/dW
-        Matrix intermediate_weight_matrix =intermediate_matrices[layer_number].dL_dW ;
-        Matrix_Scalar_Multiply(intermediate_weight_matrix,learning_rate);
-        assert(Matrix_Can_AddOrSubtract(layer_information[layer_number].weights_matrix,layer_information[layer_number].weights_matrix,intermediate_weight_matrix));
-        Matrix_Subtract(layer_information[layer_number].weights_matrix,layer_information[layer_number].weights_matrix,intermediate_weight_matrix);
+        // Create references for better readability
+        Matrix& weights = layer_information[layer_number].weights_matrix;
+        Matrix& biases = layer_information[layer_number].bias_matrix;
+        const Matrix& weight_gradients = intermediate_matrices[layer_number].dL_dW;
+        const Matrix& bias_gradients = intermediate_matrices[layer_number].dL_db;
 
-        // Update biases: b = b - learning_rate * dL/db
-        Matrix intermediate_bias_matrix = intermediate_matrices[layer_number].dL_db;
-        Matrix_Scalar_Multiply(intermediate_bias_matrix,learning_rate);
-        assert(Matrix_Can_AddOrSubtract(layer_information[layer_number].bias_matrix,layer_information[layer_number].bias_matrix,intermediate_bias_matrix));
-        Matrix_Subtract(layer_information[layer_number].bias_matrix,layer_information[layer_number].bias_matrix,intermediate_bias_matrix);
-
-    }
-    UpdateLayerInformation();
-    neural_block.Calculate_Block_Loss();
-    cost=neural_block.Get_Loss();
-
-
-}
-
-void Train_Block_by_Backpropagation::UpdateLayerInformation(){
-    int size_of_block= neural_block.Get_Block_Size();
-
-    //starting form the first layer, let us now update the renewed matrices after one step of backprop has been completed. Weight and Bias has already been updated.
-    for (int layer_number = 0; layer_number < size_of_block; ++layer_number) {
-        if (layer_number > 0) {
-            layer_information[layer_number].input_matrix = intermediate_matrices[layer_number-1].post_activation_tensor;  // Initialize the first layer's input
+        // Update weights directly (avoiding temporary matrix creation)
+        for (int i = 0; i < weights.rows(); ++i) {
+            for (int j = 0; j < weights.columns(); ++j) {
+                weights(i, j) -= learning_rate * weight_gradients(i, j);
+            }
         }
-        layer_information[layer_number].pre_activation_tensor=intermediate_matrices[layer_number].pre_activation_tensor;
-        layer_information[layer_number].post_activation_tensor=intermediate_matrices[layer_number].post_activation_tensor;
 
+        // Update biases directly
+        for (int i = 0; i < biases.rows(); ++i) {
+            for (int j = 0; j < biases.columns(); ++j) {
+                biases(i, j) -= learning_rate * bias_gradients(i, j);
+            }
+        }
 
-        neural_block.Set_Layers(layer_number).input_matrix=layer_information[layer_number].input_matrix ;
-        neural_block.Set_Layers(layer_number).weights_matrix=layer_information[layer_number].weights_matrix ;
-        neural_block.Set_Layers(layer_number).bias_matrix=layer_information[layer_number].bias_matrix ;
-        neural_block.Set_Layers(layer_number).pre_activation_tensor=layer_information[layer_number].pre_activation_tensor;
-        neural_block.Set_Layers(layer_number).post_activation_tensor=layer_information[layer_number].post_activation_tensor;
-
+        // Transfer updated parameters to neural block
+        neural_block.Set_Layers(layer_number).weights_matrix = weights;
+        neural_block.Set_Layers(layer_number).bias_matrix = biases;
     }
 
 }
+
+
 
 // Add this to the public methods section of Neural_Block class
 Matrix Train_Block_by_Backpropagation::Get_Predictions() const {
     // Return post-activation tensor of the last layer
     int last_layer = neural_block.Get_Block_Size() - 1;
-    return neural_block.Get_Layers(last_layer).post_activation_tensor;
+    return neural_block.Get_Block_Layers(last_layer).post_activation_tensor;
 }
 
 
@@ -489,6 +486,29 @@ int Train_Block_by_Backpropagation::Get_Block_Size() const{
     return neural_block.Get_Block_Size();
 }
 
+
+// Function to sum columns of a matrix and store in the destination matrix
+void Train_Block_by_Backpropagation::Matrix_Sum_Columns_To_One_Row(Matrix& dest, const Matrix& src) {
+    if (&dest == &src) {
+        throw std::invalid_argument("Result matrix must be different from input matrices.");
+    }
+
+    if (dest.columns() != src.columns()) {
+        throw std::invalid_argument("Destination matrix must have the same number of columns as the source matrix.");
+    }
+
+    if (dest.rows() != 1) {
+        throw std::invalid_argument("Destination matrix must have exactly 1 row for column summation.");
+    }
+
+    for (int col = 0; col < src.columns(); ++col) {
+        float column_sum = 0;
+        for (int row = 0; row < src.rows(); ++row) {
+            column_sum += src(row, col);
+        }
+        dest(0, col) = column_sum;
+    }
+}
 
 
 

@@ -1,65 +1,135 @@
-//
-// Created by rakib on 14/2/2025.
-//
+/**
+ * @file Neural_Layer_Skeleton.h
+ * @brief Defines the core neural network layer structure
+ * @author Rakib
+ * @date 2025-02-14
+ */
 
 #ifndef _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_SKELETON_H
 #define _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_SKELETON_H
+
 #include <string>
 #include <iostream>
 #include <stdexcept>
 #include <MatrixLibrary.h>
 
-
-// Forward declarations of dependencies
-class MatrixLibrary;  // If needed by the implementation
-
-// Enumeration for supported activation functions
+/**
+ * @enum ActivationType
+ * @brief Supported activation functions for neural network layers
+ */
 enum class ActivationType {
-    LINEAR,
-    RELU,
-    SIGMOID,
-    TANH,
-    LEAKY_RELU,
-    SWISH
+    LINEAR,     ///< Linear activation: f(x) = x
+    RELU,       ///< Rectified Linear Unit: f(x) = max(0, x)
+    SIGMOID,    ///< Sigmoid activation: f(x) = 1/(1+e^(-x))
+    TANH,       ///< Hyperbolic tangent: f(x) = tanh(x)
+    LEAKY_RELU, ///< Leaky ReLU: f(x) = x if x > 0, else αx (α small)
+    SWISH       ///< Swish activation: f(x) = x * sigmoid(x)
 };
 
+/**
+ * @class Neural_Layer_Skeleton
+ * @brief Represents a layer in a neural network with configurable activation function
+ *
+ * This class encapsulates a single neural network layer, including its weights,
+ * biases, inputs, and activation functions. It enforces proper initialization
+ * by requiring a valid neuron count at construction time.
+ */
 class Neural_Layer_Skeleton {
 public:
-    // Constructors
-    Neural_Layer_Skeleton() = default;
+    /**
+     * @brief Default constructor deleted - layers must be properly initialized
+     */
+    Neural_Layer_Skeleton() = delete;
 
-    // Parameterized constructor with optional activation
-    Neural_Layer_Skeleton(int neurone_number_in_current_layer,
-                          ActivationType activationType = ActivationType::LINEAR);
+    /**
+     * @brief Creates a neural layer with specified number of neurons and activation
+     *
+     * @param neuron_count Number of neurons in this layer
+     * @param activation_type Type of activation function to use (defaults to LINEAR)
+     * @throws std::invalid_argument If number of neurons is not positive
+     */
+    Neural_Layer_Skeleton(int neuron_count,
+                          ActivationType activation_type = ActivationType::LINEAR);
 
-    // Public member functions
-    void show_layer_info() const;
-    //Deep Copying
+    /**
+     * @brief Copy constructor - performs deep copy of all matrices
+     *
+     * @param other The layer to copy from
+     */
+    Neural_Layer_Skeleton(const Neural_Layer_Skeleton& other);
+
+    /**
+     * @brief Copy assignment operator - performs deep copy of all matrices
+     *
+     * @param other The layer to copy from
+     * @return Reference to this layer after copying
+     */
     Neural_Layer_Skeleton& operator=(const Neural_Layer_Skeleton& other);
 
-    // Getter methods
+    /**
+     * @brief Move constructor - efficiently transfers resources
+     *
+     * @param other The layer to move from
+     */
+    Neural_Layer_Skeleton(Neural_Layer_Skeleton&& other) noexcept;
+
+    /**
+     * @brief Move assignment operator - efficiently transfers resources
+     *
+     * @param other The layer to move from
+     * @return Reference to this layer after moving
+     */
+    Neural_Layer_Skeleton& operator=(Neural_Layer_Skeleton&& other) noexcept;
+
+    /**
+     * @brief Default destructor is fine since Matrix class handles cleanup correctly
+     */
+    ~Neural_Layer_Skeleton() = default;
+
+    /**
+     * @brief Gets the number of neurons in this layer
+     *
+     * @return The number of neurons
+     */
     int get_neuron_count() const;
+
+    /**
+     * @brief Gets the activation function used by this layer
+     *
+     * @return The activation function type
+     */
     ActivationType get_activation_type() const;
 
-
+    /**
+     * @brief Displays information about this layer to the console
+     */
+    void show_layer_info() const;
 
 private:
-    // Private member variables. Each neurone layer must have these.To be modifiable later.
-    Matrix input_matrix;
-    Matrix weights_matrix;
-    Matrix bias_matrix;
-    Matrix pre_activation_tensor;
-    Matrix post_activation_tensor;
-    Matrix output_matrix;
-    int neurone_number_current_layer;
-    ActivationType activationType;
+    // Matrix representations of layer components
+    Matrix input_matrix;             ///< Input values to this layer
+    Matrix weights_matrix;           ///< Weights connecting inputs to neurons
+    Matrix bias_matrix;              ///< Bias values for each neuron
+    Matrix pre_activation_tensor;    ///< Values before activation function
+    Matrix post_activation_tensor;   ///< Values after activation function, this is also the output of this layer
 
 
-    // Private helper functions
+    // Layer configuration
+    int neurone_number_current_layer; ///< Number of neurons in this layer
+    ActivationType activationType;    ///< Activation function for this layer
+
+    /**
+     * @brief Converts activation type to string representation
+     *
+     * @param activation_type The activation type to convert
+     * @return String representation of the activation type
+     * @throws std::invalid_argument If activation type is invalid
+     */
     static std::string ActivationTypeToString(ActivationType activation_type);
 
-
+    // Friend classes that need direct access to internal matrices
     friend class Neural_Block;
     friend class Train_Block_by_Backpropagation;
 };
-#endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_SKELETON_H
+
+#endif // _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_SKELETON_H
