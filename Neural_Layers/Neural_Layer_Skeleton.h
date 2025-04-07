@@ -13,6 +13,10 @@
 #include <stdexcept>
 #include <MatrixLibrary.h>
 
+// Forward declarations
+class Neural_Block;
+class Train_Block_by_Backpropagation;
+
 /**
  * @enum ActivationType
  * @brief Supported activation functions for neural network layers
@@ -36,11 +40,6 @@ enum class ActivationType {
  */
 class Neural_Layer_Skeleton {
 public:
-    /**
-     * @brief Default constructor deleted - layers must be properly initialized
-     */
-    Neural_Layer_Skeleton() = delete;
-
     /**
      * @brief Creates a neural layer with specified number of neurons and activation
      *
@@ -102,6 +101,9 @@ public:
 
     /**
      * @brief Displays information about this layer to the console
+     *
+     * Prints the number of neurons and activation function type in a
+     * formatted layout for easy readability.
      */
     void show_layer_info() const;
 
@@ -111,8 +113,7 @@ private:
     Matrix weights_matrix;           ///< Weights connecting inputs to neurons
     Matrix bias_matrix;              ///< Bias values for each neuron
     Matrix pre_activation_tensor;    ///< Values before activation function
-    Matrix post_activation_tensor;   ///< Values after activation function, this is also the output of this layer
-
+    Matrix post_activation_tensor;   ///< Values after activation function (layer output)
 
     // Layer configuration
     int neurone_number_current_layer; ///< Number of neurons in this layer

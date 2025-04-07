@@ -32,15 +32,15 @@ The FLUX neural network framework is designed around a custom matrix mathematica
 ### Core Components
 
 Each neural layer in the FLUX framework consists of several matrices that hold critical information:
-- **weights_matrix**: Holds the weights of every connection within the layer.
+- **weights_matrix**: Holds the weights_matrix of every connection within the layer.
 - **bias_matrix**: Stores the biases associated with each connection.
 - **input_matrix**: Captures the input values received by each neuron in the layer.
-- **weight_and_input_matrix**: Represents the result after the input values are multiplied by their corresponding weights.
+- **weight_and_input_matrix**: Represents the result after the input values are multiplied by their corresponding weights_matrix.
 - **weight_input_bias_matrix**: This matrix holds the values after adding the biases to the weighted inputs.
 - **activated_output_matrix**: Stores the activated output of the neurons in the layer after applying the activation function.
 - **dC_dy_matrix**: Holds the derivative of the cost function with respect to the experimental output.
 - **dC_da_matrix**: Contains the derivative of the cost function with respect to the input values.
-- **dC_dw_matrix**: Stores the derivative of the cost function with respect to the weights.
+- **dC_dw_matrix**: Stores the derivative of the cost function with respect to the weights_matrix.
 - **dC_db_matrix**: Captures the derivative of the cost function with respect to the biases.
 - **dh_da_matrix**: Holds the derivative of the activation function with respect to its input.
 
@@ -137,7 +137,7 @@ This architecture allows for a clear and modular approach to neural network desi
    - **Process**:
      - It forms the 'skeleton' of the network. It initializes empty matrices which will later be used in the forward pass and back propagation.
      - The function first initializes the network structure by determining the size of each layer based on the provided initializer list.
-     - It then iterates through each layer, initializing the weights, biases, and activation functions.
+     - It then iterates through each layer, initializing the weights_matrix, biases, and activation functions.
      - The input matrix is passed to the first layer, and each subsequent layer takes the output of the previous layer as its input.
      - Finally, it returns a `Neural_Layer_Information` object, which contains all the necessary details about the layers, their connections, and the matrices used for computation.
 
@@ -153,7 +153,7 @@ This architecture allows for a clear and modular approach to neural network desi
 
    **Detailed Explanation**:
    - **Process**:
-     - The function starts with the input matrix and multiplies it by the weights of the first layer.
+     - The function starts with the input matrix and multiplies it by the weights_matrix of the first layer.
      - The biases are then added to the result of the multiplication.
      - The result is passed through the specified activation function (e.g., ReLU, Sigmoid).
      - This process is repeated for each layer in the network until the final output is produced.
@@ -166,18 +166,18 @@ This architecture allows for a clear and modular approach to neural network desi
 
 
 3. **Back_Propagation**  
-   **Description**: Implements the backpropagation algorithm to calculate gradients and update the weights and biases of the network. This is the core of the learning process in neural networks.
+   **Description**: Implements the backpropagation algorithm to calculate gradients and update the weights_matrix and biases of the network. This is the core of the learning process in neural networks.
 
    **Detailed Explanation**:
    - **Parameters**:
-     - `neural_layer_information`: A `Neural_Layer_Information` object that holds all the necessary details about the network layers, including the matrices for weights, biases, inputs, and outputs.
+     - `neural_layer_information`: A `Neural_Layer_Information` object that holds all the necessary details about the network layers, including the matrices for weights_matrix, biases, inputs, and outputs.
      - `mean_squared_error`: A reference to a float variable where the computed mean squared error will be stored.
    
    - **Process**:
      - The function first computes the loss (e.g., Mean Squared Error) by comparing the network's output with the expected output.
      - It then calculates the gradient of the loss with respect to the output using the derivative of the activation function.
      - These gradients are propagated backward through the network, layer by layer, using the chain rule of calculus.
-     - The gradients with respect to the weights and biases are stored and later used to update these parameters.
+     - The gradients with respect to the weights_matrix and biases are stored and later used to update these parameters.
    
    - **Importance of the Matrix Library**:
      - The backpropagation process heavily relies on the custom matrix library, which handles all the matrix operations efficiently.
@@ -196,13 +196,13 @@ This architecture allows for a clear and modular approach to neural network desi
 
    **Detailed Explanation**:
    - **Parameters**:
-     - `neural_layer_information`: The information about the network layers, weights, biases, etc.
+     - `neural_layer_information`: The information about the network layers, weights_matrix, biases, etc.
      - `learning_rate`: The rate at which the network updates its parameters.
      - `iterations`: The number of times the network should iterate over the training data.
 
    - **Process**:
      - The function first initializes the network and calculates the initial Mean Squared Error (MSE).
-     - It then enters a loop where it performs forward propagation, backpropagation, and updates the weights and biases based on the gradients.
+     - It then enters a loop where it performs forward propagation, backpropagation, and updates the weights_matrix and biases based on the gradients.
      - The MSE is tracked over the iterations to monitor the training progress.
      - The final trained network and the MSE graph are outputted.
 
@@ -252,7 +252,7 @@ These functions work in harmony to create, train, and evaluate a deep learning m
 
 ## 1. Introduction to Gradient-Based Learning in Neural Networks
 
-In the realm of neural networks, the process of learning is fundamentally an optimization problem. The network aims to minimize a cost function, which quantifies the discrepancy between the network's predictions and the actual target values. The primary tool for this optimization is gradient descent, which relies on computing the gradients of the cost function with respect to the network's parameters (weights and biases).
+In the realm of neural networks, the process of learning is fundamentally an optimization problem. The network aims to minimize a cost function, which quantifies the discrepancy between the network's predictions and the actual target values. The primary tool for this optimization is gradient descent, which relies on computing the gradients of the cost function with respect to the network's parameters (weights_matrix and biases).
 
 The backpropagation algorithm, which efficiently computes these gradients, is built upon the chain rule of calculus. This section will delve into the mathematical foundations of this process, deriving the key equations that drive learning in neural networks.
 
@@ -278,7 +278,7 @@ This equation encapsulates a crucial concept: the sensitivity of the cost to a w
 ### 2.2 Significance in Neural Network Learning
 
 This decomposition is pivotal because it allows the learning algorithm to:
-1. Reuse computations: ∂C/∂Y_i can be reused for all weights feeding into the same neuron.
+1. Reuse computations: ∂C/∂Y_i can be reused for all weights_matrix feeding into the same neuron.
 2. Implement the backpropagation algorithm efficiently: gradients are computed layer by layer, from output to input.
 
 ## 3. Linear Combination in Neural Networks
@@ -324,7 +324,7 @@ Applying our fundamental equation, we get:
 This result reveals several key insights:
 
 1. The gradient of the cost with respect to a weight is proportional to the corresponding input.
-2. Larger inputs lead to larger gradients, causing those weights to be updated more aggressively during learning.
+2. Larger inputs lead to larger gradients, causing those weights_matrix to be updated more aggressively during learning.
 3. The term ∂C/∂Y_i, common to both equations, represents how the cost changes with the neuron's output. This term is propagated from later layers in the backpropagation process.
 
 ## 4. Activation Functions and Non-linearity
@@ -362,7 +362,7 @@ This formulation has profound implications for network behavior:
 
 1. Vanishing/Exploding Gradients: Depending on the activation function, ∂h_A/∂a_A can become very small (vanishing gradient) or very large (exploding gradient), affecting the network's ability to learn.
 
-2. Feature Detection: The inclusion of h_A in the gradient means that weights connected to highly activated neurons are updated more, reinforcing the detection of important features.
+2. Feature Detection: The inclusion of h_A in the gradient means that weights_matrix connected to highly activated neurons are updated more, reinforcing the detection of important features.
 
 3. Non-linear Capacity: The non-linear activation function allows each neuron to approximate a small non-linear function, with the network as a whole approximating highly complex non-linear mappings.
 
@@ -376,7 +376,7 @@ Let's break down each component:
 
 1. **∂C/∂w_A (Left side of the equation)**
    - **Meaning**: The rate of change of the cost function C with respect to a weight w_A in the network.
-   - **Significance**: Indicates how much a small change in w_A would affect the overall network error. This is the value we compute to update weights during training.
+   - **Significance**: Indicates how much a small change in w_A would affect the overall network error. This is the value we compute to update weights_matrix during training.
 
 2. **(∂C/∂a_B) (First term on right side)**
    - **Meaning**: The rate of change of the cost function C with respect to the activation a_B of the next layer (Node B).
@@ -385,7 +385,7 @@ Let's break down each component:
 
 3. **(h_A) (Second term on right side)**
    - **Meaning**: The output of the activation function at Node A.
-   - **Significance**: Ensures weight updates are proportional to neuron activity. Highly active neurons (large h_A) have their weights updated more aggressively.
+   - **Significance**: Ensures weight updates are proportional to neuron activity. Highly active neurons (large h_A) have their weights_matrix updated more aggressively.
    - **In practice**: Computed during the forward pass and stored for use in backpropagation.
 
 4. **(∂h_A/∂a_A) (Third term on right side)**
@@ -405,7 +405,7 @@ This equation encapsulates key principles of neural network learning:
 #### Additional Implications for Network Behavior
 
 1. **Vanishing/Exploding Gradients**: Extreme values of ∂h_A/∂a_A can lead to learning difficulties.
-2. **Feature Detection**: Highly activated neurons' weights are updated more, reinforcing important feature detection.
+2. **Feature Detection**: Highly activated neurons' weights_matrix are updated more, reinforcing important feature detection.
 3. **Learning Dynamics**: The interplay between terms creates complex learning dynamics.
 4. **Activation Function Choice**: Affects ∂h_A/∂a_A, impacting the overall learning process.
 
@@ -463,7 +463,7 @@ This multiplicative interaction introduces several interesting properties:
 
 2. Potential for Stronger Interactions: Multiplicative interactions can lead to stronger feature interactions, potentially capturing more complex patterns in the data.
 
-3. Challenges in Training: The interdependence can make training more difficult, as changes in one weight can have amplified effects on the gradients of other weights.
+3. Challenges in Training: The interdependence can make training more difficult, as changes in one weight can have amplified effects on the gradients of other weights_matrix.
 
 4. Sparsity Promotion: In some cases, multiplicative interactions can promote sparsity in the network, as small values in one weight can effectively "gate" the contribution of the other.
 

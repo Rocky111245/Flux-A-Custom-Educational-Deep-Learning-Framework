@@ -1,46 +1,50 @@
-//
-// Created by rakib on 14/2/2025.
-//
+/**
+ * @file Neural_Blocks.cpp
+ * @brief Implementation of the Neural_Block class
+ * @author Rakib
+ * @date 2025-02-14
+ */
 
 #include <iomanip>
 #include "Neural_Blocks.h"
+#include "Utility_Functions/Utility_Functions.h"
 
 //===========================================================================
 // Constructors & Destructor
 //===========================================================================
 
-// Constructor that accepts an input matrix and a list of layers, it does not have an output matrix.
-// First block if blocks are to be connected.
 Neural_Block::Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list)
         : input_matrix(input_matrix), layers(layer_list) {
+    // Mark that this block has a valid input matrix
     input_matrix_constructed = true;
 }
 
-// Constructor for blocks without predefined input. Blocks in middle
 Neural_Block::Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list)
         : layers(layer_list) {
+    // No special initialization needed for middle blocks
 }
 
-// Constructor for blocks with loss function and output matrix. The last block
 Neural_Block::Neural_Block(std::initializer_list<Neural_Layer_Skeleton> layer_list,
                            LossFunction loss_function, Matrix& output_matrix)
         : layers(layer_list), target_matrix(output_matrix), lossFunction(loss_function) {
+    // Mark that this block has valid output and loss function
     target_matrix_constructed = true;
     loss_function_constructed = true;
 }
 
-// Constructor that includes loss function and output matrix. This is one full block
 Neural_Block::Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list,
                            LossFunction loss_function, Matrix& target_matrix)
         : input_matrix(input_matrix), target_matrix(target_matrix),
           layers(layer_list), lossFunction(loss_function) {
+    // Mark that this is a complete block with all components
     input_matrix_constructed = true;
     target_matrix_constructed = true;
     loss_function_constructed = true;
+
+    // Initialize all matrices to create a complete network
     Construct_Matrices();
 }
 
-// Copy constructor
 Neural_Block::Neural_Block(const Neural_Block& other)
         : input_matrix(other.input_matrix),
           target_matrix(other.target_matrix),
@@ -50,9 +54,9 @@ Neural_Block::Neural_Block(const Neural_Block& other)
           input_matrix_constructed(other.input_matrix_constructed),
           target_matrix_constructed(other.target_matrix_constructed),
           loss_function_constructed(other.loss_function_constructed) {
+    // All members are deep-copied through their respective copy constructors
 }
 
-// Move constructor
 Neural_Block::Neural_Block(Neural_Block&& other) noexcept
         : input_matrix(std::move(other.input_matrix)),
           target_matrix(std::move(other.target_matrix)),
@@ -63,16 +67,16 @@ Neural_Block::Neural_Block(Neural_Block&& other) noexcept
           target_matrix_constructed(other.target_matrix_constructed),
           loss_function_constructed(other.loss_function_constructed) {
 
-    // Reset the moved-from object's state
+    // Reset the moved-from object to a valid but empty state
     other.input_matrix_constructed = false;
     other.target_matrix_constructed = false;
     other.loss_function_constructed = false;
     other.loss = 0.0f;
 }
 
-// Copy assignment operator
 Neural_Block& Neural_Block::operator=(const Neural_Block& other) {
     if (this != &other) { // Prevent self-assignment
+        // Perform deep copy of all members
         input_matrix = other.input_matrix;
         target_matrix = other.target_matrix;
         lossFunction = other.lossFunction;
@@ -85,9 +89,9 @@ Neural_Block& Neural_Block::operator=(const Neural_Block& other) {
     return *this;
 }
 
-// Move assignment operator
 Neural_Block& Neural_Block::operator=(Neural_Block&& other) noexcept {
     if (this != &other) { // Prevent self-assignment
+        // Move resources efficiently
         input_matrix = std::move(other.input_matrix);
         target_matrix = std::move(other.target_matrix);
         lossFunction = other.lossFunction;
@@ -97,7 +101,7 @@ Neural_Block& Neural_Block::operator=(Neural_Block&& other) noexcept {
         target_matrix_constructed = other.target_matrix_constructed;
         loss_function_constructed = other.loss_function_constructed;
 
-        // Reset the moved-from object's state
+        // Reset the moved-from object to a valid but empty state
         other.input_matrix_constructed = false;
         other.target_matrix_constructed = false;
         other.loss_function_constructed = false;
@@ -106,7 +110,6 @@ Neural_Block& Neural_Block::operator=(Neural_Block&& other) noexcept {
     return *this;
 }
 
-// Destructor
 Neural_Block::~Neural_Block() {
     // Most resources are managed by RAII through matrices and vectors
     // No manual cleanup needed
@@ -116,66 +119,64 @@ Neural_Block::~Neural_Block() {
 // Public Methods
 //===========================================================================
 
-// Perform forward pass with activation
 void Neural_Block::Forward_Pass_With_Activation() {
     size_t size_of_layer = layers.size();
 
-    // Forward pass through each layer
+    // Forward pass through each layer sequentially
     for (size_t i = 0; i < size_of_layer; i++) {
-        // Compute this layer's activations
+        // Compute pre-activation (z = xW + b)
         Compute_PreActivation_Matrix(layers[i].input_matrix, layers[i].weights_matrix,
                                      layers[i].bias_matrix, layers[i].pre_activation_tensor);
+
+        // Apply activation function (a = g(z))
         Compute_PostActivation_Matrix(layers[i].pre_activation_tensor,
                                       layers[i].post_activation_tensor, layers[i].activationType);
 
-        // Update input for next layer
+        // Set the output of this layer as input to the next layer
         if (i < size_of_layer - 1) {
             layers[i+1].input_matrix = layers[i].post_activation_tensor;
         }
     }
 
-    // Calculate loss after forward pass is complete
+    // Calculate network loss after completing the forward pass
     Calculate_Block_Loss();
 }
 
-// Connect one block with another. It makes one new big block
 Neural_Block& Neural_Block::Connect_With(Neural_Block& block2) {
-    // Connection is only possible if it is not a full block. If it is a full block, we cannot connect.
+    // Verify that connection is valid - neither block should be complete
     if (input_matrix_constructed && target_matrix_constructed && loss_function_constructed) {
         std::cerr << "Error: Cannot connect blocks if they are already complete." << std::endl;
         exit(1);
     }
 
+    // The output block should be provided as argument, not be the caller
     if (this->target_matrix_constructed && this->loss_function_constructed) {
         std::cerr << "Error: CANNOT connect. Output block should be the argument, not the caller." << std::endl;
         exit(1);
     }
 
+    // Append the layers from block2 to this block
     layers.insert(layers.end(), block2.layers.begin(), block2.layers.end());
 
-    // If the block has all of these 3, this means that the connection has completed.
+    // If combining these blocks creates a complete network, initialize all matrices
     if (input_matrix_constructed && block2.target_matrix_constructed && block2.loss_function_constructed) {
         Construct_Matrices();
     }
+
     return *this;
 }
-
-
-
 
 //===========================================================================
 // Getters
 //===========================================================================
 
-const Neural_Layer_Skeleton& Neural_Block::Get_Block_Layers(int layer_number) const {
+Neural_Layer_Skeleton& Neural_Block::Set_Block_Layers(int layer_number) {
     return layers[layer_number];
 }
 
 bool Neural_Block::Get_Block_Status() const {
-    if (input_matrix_constructed && target_matrix_constructed && loss_function_constructed) {
-        return true;
-    }
-    return false;
+    // A block is complete when it has input, target, and loss function
+    return (input_matrix_constructed && target_matrix_constructed && loss_function_constructed);
 }
 
 LossFunction Neural_Block::Get_Block_Loss_Type() const {
@@ -214,12 +215,10 @@ Matrix& Neural_Block::Get_Block_Post_Activation_Matrix(int layer_number) {
     return layers[layer_number].post_activation_tensor;
 }
 
-
 //===========================================================================
 // Setters
 //===========================================================================
 
-//Used to update the matrices after a layer has been modified in backpropagation
 Neural_Layer_Skeleton& Neural_Block::Set_Layers(int layer_number) {
     return layers[layer_number];
 }
@@ -227,6 +226,8 @@ Neural_Layer_Skeleton& Neural_Block::Set_Layers(int layer_number) {
 //===========================================================================
 // Private Helper Methods
 //===========================================================================
+
+// Utility function to print a matrix (for debugging)
 void Matrix_Print(Matrix& matrix) {
     for (int i = 0; i < matrix.rows(); i++) {
         for (int j = 0; j < matrix.columns(); j++) {
@@ -235,76 +236,79 @@ void Matrix_Print(Matrix& matrix) {
         std::cout << std::endl;
     }
 }
-// Construct matrices for each layer with correct dimensions
-void Neural_Block::Construct_Matrices() {
-    //set the output to the last layer
 
+void Neural_Block::Construct_Matrices() {
+    // Initialize matrices for each layer with proper dimensions
     for (size_t i = 0; i < layers.size(); i++) {
+        // Set up input connections
         if (i == 0) {
-            layers[i].input_matrix = input_matrix;  // Initialize the first layer's input
+            // First layer gets the block's input
+            layers[i].input_matrix = input_matrix;
         } else {
-            layers[i].input_matrix = layers[i - 1].post_activation_tensor;  // Connect layers
+            // Other layers connect to previous layer's output
+            layers[i].input_matrix = layers[i - 1].post_activation_tensor;
         }
 
-        // All matrices initialized to zero
+        // Initialize weights with Xavier/Glorot initialization for better convergence
         layers[i].weights_matrix = Matrix(layers[i].get_neuron_count(), layers[i].input_matrix.columns(), 0.0f);
         Matrix_Xavier_Uniform(layers[i].weights_matrix);
 
+        // Initialize bias, pre-activation and post-activation matrices
         layers[i].bias_matrix = Matrix(1, layers[i].get_neuron_count(), 0.0f);
         layers[i].pre_activation_tensor = Matrix(layers[i].input_matrix.rows(), layers[i].get_neuron_count(), 0.0f);
         layers[i].post_activation_tensor = Matrix(layers[i].input_matrix.rows(), layers[i].get_neuron_count(), 0.0f);
     }
 }
 
-
-
-// Compute pre-activation matrix
 void Neural_Block::Compute_PreActivation_Matrix(Matrix& input_matrix_internal,
                                                 Matrix& weights_matrix_internal,
                                                 Matrix& bias_matrix_internal,
                                                 Matrix& pre_activation_tensor_internal) {
+    // Create transposed weights for efficient matrix multiplication
     Matrix transposed_weights(weights_matrix_internal.columns(), weights_matrix_internal.rows(), 0.0f);
     Matrix_Transpose(transposed_weights, weights_matrix_internal);
 
+    // Ensure matrices have compatible dimensions for multiplication
     assert(Matrix_Can_Multiply(pre_activation_tensor_internal, input_matrix_internal, transposed_weights));
-    //Debug_Matrix(input_matrix_internal, "input_matrix_internal");
-    //Debug_Matrix(weights_matrix_internal, "weights_matrix_internal");
-    //Debug_Matrix(transposed_weights, "transposed_weights");
-    //Debug_Matrix(pre_activation_tensor_internal, "pre_activation_tensor_internal");
-    Matrix_Multiply(pre_activation_tensor_internal, input_matrix_internal, transposed_weights);
-    //Debug_Matrix(pre_activation_tensor_internal, "After calculation,before bias addition: pre_activation_tensor_internal");
 
-    //Apply bias
+    // Compute z = x * W^T (matrix multiplication)
+    Matrix_Multiply(pre_activation_tensor_internal, input_matrix_internal, transposed_weights);
+
+    // Apply bias: z = x * W^T + b (element-wise addition)
+    // First broadcast bias to match pre-activation dimensions
     Matrix temp(pre_activation_tensor_internal.rows(), pre_activation_tensor_internal.columns(), 0.0f);
     Matrix_Broadcast(temp, bias_matrix_internal, pre_activation_tensor_internal.rows(), pre_activation_tensor_internal.columns());
-    //Debug_Matrix(temp, "Bias Broadcasted Matrix");
     Matrix_Add(pre_activation_tensor_internal, pre_activation_tensor_internal, temp);
-    //Debug_Matrix(pre_activation_tensor_internal, "After calculation,after bias addition: pre_activation_tensor_internal");
-
 }
 
-// Compute the loss for a block
 void Neural_Block::Calculate_Block_Loss() {
+    // Verify the block is complete before calculating loss
     assert(Get_Block_Status());
+
+    // Get the output of the last layer
     int last_layer = layers.size() - 1;
+
+    // Calculate loss between network output and target
     loss = Calculate_Loss(layers[last_layer].post_activation_tensor, target_matrix, lossFunction);
 }
 
-// Compute post-activation matrix
-void Neural_Block::Compute_PostActivation_Matrix(Matrix& pre_activation_tensor_internal,Matrix& post_activation_tensor_internal,ActivationType activation_function_internal) {
-    Apply_Activation_Function_To_Matrix( post_activation_tensor_internal,pre_activation_tensor_internal, activation_function_internal);
+void Neural_Block::Compute_PostActivation_Matrix(Matrix& pre_activation_tensor_internal,
+                                                 Matrix& post_activation_tensor_internal,
+                                                 ActivationType activation_function_internal) {
+    // Apply the chosen activation function to the pre-activation values
+    Apply_Activation_Function_To_Matrix(post_activation_tensor_internal, pre_activation_tensor_internal, activation_function_internal);
 }
 
-// Apply activation function to an entire matrix with improved efficiency
 void Neural_Block::Apply_Activation_Function_To_Matrix(Matrix& result, const Matrix& input, ActivationType activation_type) {
-    // Validate matrix dimensions
+    // Ensure matrices have compatible dimensions
     if (result.rows() != input.rows() || result.columns() != input.columns()) {
         throw std::invalid_argument("Input and result matrices must have matching dimensions.");
     }
 
-    // Determine activation function once before processing elements
+    // Apply the appropriate activation function element-wise
     switch (activation_type) {
         case ActivationType::RELU: {
+            // ReLU: f(x) = max(0, x)
             for (int i = 0; i < input.rows(); i++) {
                 for (int j = 0; j < input.columns(); j++) {
                     float value = input(i, j);
@@ -314,6 +318,7 @@ void Neural_Block::Apply_Activation_Function_To_Matrix(Matrix& result, const Mat
             break;
         }
         case ActivationType::SIGMOID: {
+            // Sigmoid: f(x) = 1/(1+e^(-x))
             for (int i = 0; i < input.rows(); i++) {
                 for (int j = 0; j < input.columns(); j++) {
                     float value = input(i, j);
@@ -323,6 +328,7 @@ void Neural_Block::Apply_Activation_Function_To_Matrix(Matrix& result, const Mat
             break;
         }
         case ActivationType::TANH: {
+            // Hyperbolic tangent: f(x) = tanh(x)
             for (int i = 0; i < input.rows(); i++) {
                 for (int j = 0; j < input.columns(); j++) {
                     float value = input(i, j);
@@ -332,6 +338,7 @@ void Neural_Block::Apply_Activation_Function_To_Matrix(Matrix& result, const Mat
             break;
         }
         case ActivationType::LEAKY_RELU: {
+            // Leaky ReLU: f(x) = x if x > 0, else 0.01*x
             for (int i = 0; i < input.rows(); i++) {
                 for (int j = 0; j < input.columns(); j++) {
                     float value = input(i, j);
@@ -341,6 +348,7 @@ void Neural_Block::Apply_Activation_Function_To_Matrix(Matrix& result, const Mat
             break;
         }
         case ActivationType::SWISH: {
+            // Swish: f(x) = x * sigmoid(x)
             for (int i = 0; i < input.rows(); i++) {
                 for (int j = 0; j < input.columns(); j++) {
                     float value = input(i, j);
@@ -350,6 +358,7 @@ void Neural_Block::Apply_Activation_Function_To_Matrix(Matrix& result, const Mat
             break;
         }
         case ActivationType::LINEAR: {
+            // Linear: f(x) = x
             for (int i = 0; i < input.rows(); i++) {
                 for (int j = 0; j < input.columns(); j++) {
                     result(i, j) = input(i, j);
