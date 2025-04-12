@@ -102,6 +102,8 @@ int main() {
     // Create trainer and start the training process
     // Note: Training begins automatically when the Train_Block_by_Backpropagation object is created
     Train_Block_by_Backpropagation trainer(parity_network, iterations, learning_rate);
+    trainer.Train_by_Backpropagation();
+
 
     // Ensure network is fully forward propagated to get final results
     parity_network.Forward_Pass_With_Activation();

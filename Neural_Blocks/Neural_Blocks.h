@@ -80,6 +80,11 @@ public:
     Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_Layer_Skeleton> layer_list,
                  LossFunction loss_function, Matrix& target_matrix);
 
+    // Added this constructor to accept vectors instead of initializer_list.
+    // This constructor is necessary to make it work for the web assembly.
+    Neural_Block(Matrix& input_matrix, const std::vector<Neural_Layer_Skeleton>& layer_vector,
+                 LossFunction loss_function, Matrix& target_matrix);
+
     /**
      * @brief Copy constructor - performs deep copy of all components
      *

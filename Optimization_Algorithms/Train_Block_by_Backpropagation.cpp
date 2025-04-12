@@ -7,6 +7,7 @@
 
 #include "Train_Block_by_Backpropagation.h"
 
+//Main constructor
 Train_Block_by_Backpropagation::Train_Block_by_Backpropagation(Neural_Block &neural_block, int iterations, float learning_rate)
         : neural_block(neural_block), learning_rate(learning_rate), iterations(iterations) {
     // Initialize data structures with proper sizes based on network architecture
@@ -16,9 +17,8 @@ Train_Block_by_Backpropagation::Train_Block_by_Backpropagation(Neural_Block &neu
     // Set up all matrices needed for backpropagation
     Initialize_Layer_Intermediate_Matrices();
 
-    // Start training immediately upon construction
-    Train_by_Backpropagation();
 }
+
 
 void Train_Block_by_Backpropagation::Train_by_Backpropagation() {
     // Training loop for the specified number of iterations
@@ -35,6 +35,22 @@ void Train_Block_by_Backpropagation::Train_by_Backpropagation() {
         // Log progress after each iteration
         std::cout << "Iteration " << i << ", Loss: " << neural_block.Get_Block_Loss() << std::endl;
     }
+}
+
+
+
+//This is a special function to accommodate for Web Assembly visualization. We basically train by one iteration
+void Train_Block_by_Backpropagation::Train_by_Backpropagation_One_Iteration() {
+    // Training loop for the specified number of iterations
+
+    // Step 1: Forward pass - compute outputs for all layers
+    neural_block.Forward_Pass_With_Activation();
+
+    // Step 2: Backward pass - compute gradients for all parameters
+    ComputeAllLayerGradients();
+
+    // Step 3: Update parameters using computed gradients
+    UpdateLayerParameters();
 }
 
 void Train_Block_by_Backpropagation::Initialize_Layer_Intermediate_Matrices() {

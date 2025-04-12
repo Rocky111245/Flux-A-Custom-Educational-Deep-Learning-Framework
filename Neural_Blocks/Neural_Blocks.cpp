@@ -45,6 +45,20 @@ Neural_Block::Neural_Block(Matrix& input_matrix, std::initializer_list<Neural_La
     Construct_Matrices();
 }
 
+//This constructor is necessary to make it work for the web assembly
+Neural_Block::Neural_Block(Matrix& input_matrix, const std::vector<Neural_Layer_Skeleton>& layer_vector,
+                           LossFunction loss_function, Matrix& target_matrix)
+        : input_matrix(input_matrix), target_matrix(target_matrix),
+          layers(layer_vector), lossFunction(loss_function) {
+    // Mark that this is a complete block with all components
+    input_matrix_constructed = true;
+    target_matrix_constructed = true;
+    loss_function_constructed = true;
+
+    // Initialize all matrices to create a complete network
+    Construct_Matrices();
+}
+
 Neural_Block::Neural_Block(const Neural_Block& other)
         : input_matrix(other.input_matrix),
           target_matrix(other.target_matrix),

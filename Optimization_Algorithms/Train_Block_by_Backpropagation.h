@@ -87,6 +87,7 @@ public:
      */
     Train_Block_by_Backpropagation(Neural_Block &neural_block, int iterations, float learning_rate = 0.01f);
 
+
     /**
      * @brief Performs backpropagation training for the specified number of iterations
      *
@@ -94,6 +95,8 @@ public:
      * for each iteration, tracking and reporting the loss.
      */
     void Train_by_Backpropagation();
+    void Train_by_Backpropagation_One_Iteration();
+
 
     /**
      * @brief Gets all intermediate gradient matrices for inspection
@@ -193,6 +196,7 @@ private:
      * on the latest forward pass results.
      */
     void UpdateInformationAfterForwardPass();
+
 };
 
 #endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_TRAIN_BLOCK_BY_BACKPROPAGATION_H
