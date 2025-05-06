@@ -11,3 +11,5 @@
 /cmake-build-debug
 /.idea
 /cmake-build-emscripten
+*.svg
+*.svg

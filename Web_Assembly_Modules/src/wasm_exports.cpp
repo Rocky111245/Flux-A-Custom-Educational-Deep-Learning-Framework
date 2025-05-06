@@ -1,6 +1,6 @@
 #include <emscripten/emscripten.h>
-#include "Neural_Blocks/Neural_Blocks.h"
-#include "Optimization_Algorithms/Train_Block_by_Backpropagation.h"
+#include "Multi Layer Perceptron/Neural_Blocks/Neural_Blocks.h"
+#include "Multi Layer Perceptron/Optimization_Algorithms/Train_Block_by_Backpropagation.h"
 #include <vector>
 
 // Global neural block for the parity network

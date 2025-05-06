@@ -12,15 +12,15 @@ set(LOSS_FUNCTIONS_SRC
 )
 
 set(NEURAL_BLOCKS_SRC
-        "Neural_Blocks/Neural_Blocks.cpp"
+        "Multi Layer Perceptron/Neural_Blocks/Neural_Blocks.cpp"
 )
 
 set(NEURAL_LAYERS_SRC
-        "Neural_Layers/Neural_Layer_Skeleton.cpp"
+        "Multi Layer Perceptron/Neural_Layers/Neural_Layer_Skeleton.cpp"
 )
 
 set(OPTIMIZATION_ALGORITHMS_SRC
-        "Optimization_Algorithms/Train_Block_by_Backpropagation.cpp"
+        "Multi Layer Perceptron/Optimization_Algorithms/Train_Block_by_Backpropagation.cpp"
 )
 
 set(UTILITY_FUNCTIONS_SRC
@@ -102,6 +102,8 @@ else()
             ${OPTIMIZATION_ALGORITHMS_SRC}
             ${MATRIX_DIMENSION_CHECKS_SRC}
             ${UTILITY_FUNCTIONS_SRC}
+            Tensor_Library/Tensor_Library.cpp
+            Tensor_Library/Tensor_Library.h
     )
     target_include_directories(${PROJECT_NAME} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks")
     target_link_directories(${PROJECT_NAME} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug")
@@ -113,4 +115,41 @@ else()
             "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug/libMatrixLibrary.dll"
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
+
+
+    # Add CNN executable separately
+    add_executable(CNN_main
+            Convolutional_Neural_Networks/main.cpp
+            Convolutional_Neural_Networks/Matrix_Migration_Functions/Matrix_Migration_Functions.cpp
+            ${LOSS_FUNCTIONS_SRC}
+            ${NEURAL_BLOCKS_SRC}
+            ${NEURAL_LAYERS_SRC}
+            ${OPTIMIZATION_ALGORITHMS_SRC}
+            ${MATRIX_DIMENSION_CHECKS_SRC}
+            ${UTILITY_FUNCTIONS_SRC}
+            Convolutional_Neural_Networks/Kernels/Kernels.cpp
+            Convolutional_Neural_Networks/Kernels/Kernels.h
+            Convolutional_Neural_Networks/Covolution_Operations/Convolution_Operations.cpp
+            Convolutional_Neural_Networks/Covolution_Operations/Convolution_Operations.h
+            Tensor_Library/Tensor_Library.cpp
+            Tensor_Library/Tensor_Library.h
+    )
+
+    target_include_directories(CNN_main PRIVATE
+            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks"
+            "${CMAKE_SOURCE_DIR}/Convolutional_Neural_Networks/Matrix_Migration_Functions"
+    )
+
+    target_link_directories(CNN_main PRIVATE
+            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug"
+    )
+
+    target_link_libraries(CNN_main PRIVATE libMatrixLibrary)
+
+    add_custom_command(TARGET CNN_main POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug/libMatrixLibrary.dll"
+            $<TARGET_FILE_DIR:CNN_main>
+    )
+
 endif()

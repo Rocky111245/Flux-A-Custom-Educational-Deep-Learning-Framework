@@ -200,214 +200,273 @@
 }
 
     // Function to build the neural network
-    function buildNetwork() {
-    if (!wasmModule) {
-    alert("WASM module not loaded yet!");
-    return;
-}
+ // Function to build the neural network
+ function buildNetwork() {
+     if (!wasmModule) {
+         alert("WASM module not loaded yet!");
+         return;
+     }
 
-    const status = document.getElementById('status');
-    status.className = "status loading";
-    status.textContent = "Building neural network...";
+     const status = document.getElementById('status');
+     status.className = "status loading";
+     status.textContent = "Building neural network...";
 
-    try {
-    // Standard parameters for 4-bit parity problem
-    const inputRows = 16;  // All possible 4-bit patterns
-    const inputCols = 4;   // 4 bits per pattern
-    const outputRows = 16; // Output for each pattern
-    const outputCols = 1;  // Binary classification
+     try {
+         // Standard parameters for 4-bit parity problem
+         const inputRows = 16;  // All possible 4-bit patterns
+         const inputCols = 4;   // 4 bits per pattern
+         const outputRows = 16; // Output for each pattern
+         const outputCols = 1;  // Binary classification
 
-    // If we only have one hidden layer, use the simple function
-    if (hiddenLayers.length === 1) {
-    wasmModule.ccall(
-    'createCustomBlock',
-    null,
-    ['number', 'number', 'number', 'number', 'number', 'number'],
-    [
-    inputRows,
-    inputCols,
-    hiddenLayers[0].neurons,
-    outputRows,
-    outputCols,
-    2  // Cross entropy loss
-    ]
-    );
-} else {
-    // Multi-layer network
-    const numHiddenLayers = hiddenLayers.length;
+         // If we only have one hidden layer, use the simple function
+         if (hiddenLayers.length === 1) {
+             wasmModule.ccall(
+                 'createCustomBlock',
+                 null,
+                 ['number', 'number', 'number', 'number', 'number', 'number'],
+                 [
+                     inputRows,
+                     inputCols,
+                     hiddenLayers[0].neurons,
+                     outputRows,
+                     outputCols,
+                     2  // Cross entropy loss
+                 ]
+             );
+         } else {
+             // Multi-layer network
+             const numHiddenLayers = hiddenLayers.length;
 
-    // Create arrays for layer sizes and activations
-    const sizesArray = new Int32Array(numHiddenLayers);
-    const activationsArray = new Int32Array(numHiddenLayers);
+             // Create arrays for layer sizes and activations
+             const sizesArray = new Int32Array(numHiddenLayers);
+             const activationsArray = new Int32Array(numHiddenLayers);
 
-    // Fill the arrays
-    for (let i = 0; i < numHiddenLayers; i++) {
-    sizesArray[i] = hiddenLayers[i].neurons;
-    activationsArray[i] = hiddenLayers[i].activation;
-}
+             // Fill the arrays
+             for (let i = 0; i < numHiddenLayers; i++) {
+                 sizesArray[i] = hiddenLayers[i].neurons;
+                 activationsArray[i] = hiddenLayers[i].activation;
+             }
 
-    // Allocate memory in the WASM heap
-    const sizesPtr = wasmModule._malloc(numHiddenLayers * 4); // Int32 = 4 bytes
-    const activationsPtr = wasmModule._malloc(numHiddenLayers * 4);
+             // Allocate memory in the WASM heap
+             const sizesPtr = wasmModule._malloc(numHiddenLayers * 4); // Int32 = 4 bytes
+             const activationsPtr = wasmModule._malloc(numHiddenLayers * 4);
 
-    // Copy JavaScript arrays to WASM memory
-    wasmModule.HEAP32.set(sizesArray, sizesPtr / 4);
-    wasmModule.HEAP32.set(activationsArray, activationsPtr / 4);
+             // Copy JavaScript arrays to WASM memory
+             wasmModule.HEAP32.set(sizesArray, sizesPtr / 4);
+             wasmModule.HEAP32.set(activationsArray, activationsPtr / 4);
 
-    try {
-    // Call the WASM function
-    wasmModule.ccall(
-    'createMultiLayerNetwork',
-    null,
-    ['number', 'number', 'number', 'number', 'number',
-    'number', 'number', 'number', 'number'],
-    [
-    inputRows,
-    inputCols,
-    numHiddenLayers,
-    sizesPtr,
-    activationsPtr,
-    outputRows,
-    outputCols,
-    2   // Cross entropy loss
-    ]
-    );
-} finally {
-    // Free the allocated memory
-    wasmModule._free(sizesPtr);
-    wasmModule._free(activationsPtr);
-}
-}
+             try {
+                 // Call the WASM function
+                 wasmModule.ccall(
+                     'createMultiLayerNetwork',
+                     null,
+                     ['number', 'number', 'number', 'number', 'number',
+                         'number', 'number', 'number', 'number'],
+                     [
+                         inputRows,
+                         inputCols,
+                         numHiddenLayers,
+                         sizesPtr,
+                         activationsPtr,
+                         outputRows,
+                         outputCols,
+                         2   // Cross entropy loss
+                     ]
+                 );
+             } finally {
+                 // Free the allocated memory
+                 wasmModule._free(sizesPtr);
+                 wasmModule._free(activationsPtr);
+             }
+         }
 
-    // Get the block size
-    const blockSize = wasmModule.ccall('getBlockSize', 'number', [], []);
+         // Get the block size
+         const blockSize = wasmModule.ccall('getBlockSize', 'number', [], []);
 
-    // Try to get the loss if available
-    let loss = "N/A";
-    try {
-    loss = wasmModule.ccall('getNetworkLoss', 'number', [], []);
-    loss = loss.toFixed(6);
-} catch (e) {
-    console.warn("Loss calculation not available:", e);
-}
+         // Try to get the loss if available
+         let loss = "N/A";
+         try {
+             loss = wasmModule.ccall('getNetworkLoss', 'number', [], []);
+             loss = loss.toFixed(6);
+         } catch (e) {
+             console.warn("Loss calculation not available:", e);
+         }
 
-    // Update status
-    status.className = "status success";
-    status.textContent = `Network built successfully! Total layers: ${blockSize}`;
+         // Update status
+         status.className = "status success";
+         status.textContent = `Network built successfully! Total layers: ${blockSize}`;
 
-    // Update network info
-    updateNetworkInfo(blockSize, loss);
+         // Update network info
+         updateNetworkInfo(blockSize, loss);
 
-    // Set flag that network is built
-    networkBuilt = true;
+         // Render network visualization with safeguards
+         setTimeout(() => {
+             try {
+                 if (window.networkVisualizer) {
+                     // Make sure the visualization container exists
+                     const container = document.getElementById('network-visualization');
+                     if (!container) {
+                         // Create the container if it doesn't exist
+                         const vizContainer = document.createElement('div');
+                         vizContainer.id = 'network-visualization';
+                         vizContainer.style.width = '100%';
+                         vizContainer.style.height = '400px';
+                         vizContainer.style.marginTop = '20px';
+                         vizContainer.style.backgroundColor = '#f9f9f9';
+                         vizContainer.style.borderRadius = '8px';
 
-    // Automatically switch to training tab
-    document.querySelector('.tab[data-tab="training"]').click();
+                         const networkInfo = document.getElementById('networkInfo');
+                         if (networkInfo) {
+                             networkInfo.appendChild(vizContainer);
+                         }
+                     }
 
-} catch (error) {
-    console.error("Error building network:", error);
-    status.className = "status error";
-    status.textContent = "Error building network: " + error;
-    networkBuilt = false;
-}
-}
+                     // Render the visualization
+                     window.networkVisualizer.render(hiddenLayers);
+                 } else {
+                     // Create visualizer if it doesn't exist
+                     window.networkVisualizer = new NetworkVisualizer('network-visualization');
+                     window.networkVisualizer.render(hiddenLayers);
+                 }
+             } catch (error) {
+                 console.warn('Error rendering visualization:', error);
+             }
+         }, 100); // Short delay to ensure the DOM is ready
+
+         // Set flag that network is built
+         networkBuilt = true;
+
+         // Automatically switch to training tab
+         document.querySelector('.tab[data-tab="training"]').click();
+
+     } catch (error) {
+         console.error("Error building network:", error);
+         status.className = "status error";
+         status.textContent = "Error building network: " + error;
+         networkBuilt = false;
+     }
+ }
 
     // Function to train the network using iterative approach
-    function trainNetwork() {
-    if (!wasmModule) {
-    alert("WASM module not loaded yet!");
-    return;
-}
+ // Function to train the network using iterative approach with proper UI updates
+ function trainNetwork() {
+     if (!wasmModule) {
+         alert("WASM module not loaded yet!");
+         return;
+     }
 
-    if (!networkBuilt) {
-    alert("Please build a network first!");
-    document.querySelector('.tab[data-tab="design"]').click();
-    return;
-}
+     if (!networkBuilt) {
+         alert("Please build a network first!");
+         document.querySelector('.tab[data-tab="design"]').click();
+         return;
+     }
 
-    // Get training parameters
-    const iterations = parseInt(document.getElementById('iterations').value);
-    const learningRate = parseFloat(document.getElementById('learningRate').value);
+     // Get training parameters
+     const iterations = parseInt(document.getElementById('iterations').value);
+     const learningRate = parseFloat(document.getElementById('learningRate').value);
 
-    // Show training animation
-    document.getElementById('trainAnimation').style.display = 'block';
+     // Show training animation
+     document.getElementById('trainAnimation').style.display = 'block';
 
-    // Disable train button during training
-    document.getElementById('trainNetworkBtn').disabled = true;
+     // Disable train button during training
+     document.getElementById('trainNetworkBtn').disabled = true;
 
-    // Clear previous training info
-    document.getElementById('trainingInfo').style.display = 'none';
+     // Clear previous training info
+     document.getElementById('trainingInfo').style.display = 'none';
 
-    // Add a progress indicator if not already present
-    let progressIndicator = document.getElementById('trainingProgress');
-    if (!progressIndicator) {
-    progressIndicator = document.createElement('div');
-    progressIndicator.id = 'trainingProgress';
-    progressIndicator.className = 'training-progress';
-    document.getElementById('trainAnimation').appendChild(progressIndicator);
-}
-    progressIndicator.textContent = 'Starting training...';
+     // Set up progress bar container if not already present
+     let progressContainer = document.getElementById('trainingProgressContainer');
+     if (!progressContainer) {
+         progressContainer = document.createElement('div');
+         progressContainer.id = 'trainingProgressContainer';
+         progressContainer.className = 'progress-container';
+         document.getElementById('trainAnimation').appendChild(progressContainer);
 
-    // Record start time
-    const startTime = performance.now();
+         // Create actual progress bar element
+         const progressBar = document.createElement('div');
+         progressBar.id = 'trainingProgressBar';
+         progressBar.className = 'progress-bar';
+         progressContainer.appendChild(progressBar);
 
-    // Initialize the trainer with the learning rate
-    wasmModule.ccall('Initialize_Trainer_For_One_Step_Iteration', null, ['number'], [learningRate]);
+         // Create text indicator
+         const progressText = document.createElement('div');
+         progressText.id = 'trainingProgressText';
+         progressText.className = 'progress-text';
+         progressContainer.appendChild(progressText);
+     }
 
-    // Track iterations
-    let currentIteration = 0;
+     // Get references to our progress elements
+     const progressBar = document.getElementById('trainingProgressBar');
+     const progressText = document.getElementById('trainingProgressText');
 
-    // Function to run one training step
-    function runTrainingIteration() {
-    // Check if we've completed all iterations
-    if (currentIteration >= iterations) {
-    // Training complete - finalize and update UI
-    const endTime = performance.now();
-    const trainingTime = ((endTime - startTime) / 1000).toFixed(2);
-    const finalLoss = wasmModule.ccall('Get_Block_Loss', 'number', [], []);
+     // Initialize progress display
+     progressBar.style.width = '0%';
+     progressText.textContent = 'Starting training...';
 
-    // Hide animation
-    document.getElementById('trainAnimation').style.display = 'none';
+     // Record start time
+     const startTime = performance.now();
 
-    // Update training info display
-    document.getElementById('iterationInfo').textContent = `Iterations: ${iterations}`;
-    document.getElementById('learningRateInfo').textContent = `Learning Rate: ${learningRate}`;
-    document.getElementById('trainingTimeInfo').textContent = `Training Time: ${trainingTime}s`;
-    document.getElementById('finalLossInfo').textContent = `Final Loss: ${finalLoss.toFixed(6)}`;
+     // Initialize the trainer with the learning rate
+     wasmModule.ccall('Initialize_Trainer_For_One_Step_Iteration', null, ['number'], [learningRate]);
 
-    // Show training info
-    document.getElementById('trainingInfo').style.display = 'block';
+     // Track iterations
+     let currentIteration = 0;
 
-    // Enable train button
-    document.getElementById('trainNetworkBtn').disabled = false;
+     // Function to run one training step
+     function runTrainingIteration() {
+         // Check if we've completed all iterations
+         if (currentIteration >= iterations) {
+             // Training complete - finalize and update UI
+             const endTime = performance.now();
+             const trainingTime = ((endTime - startTime) / 1000).toFixed(2);
+             const finalLoss = wasmModule.ccall('Get_Block_Loss', 'number', [], []);
 
-    // Update results and switch to results tab
-    updateResults();
-    document.querySelector('.tab[data-tab="results"]').click();
+             // Hide animation
+             document.getElementById('trainAnimation').style.display = 'none';
 
-    return;
-}
+             // Update training info display
+             document.getElementById('iterationInfo').textContent = `Iterations: ${iterations}`;
+             document.getElementById('learningRateInfo').textContent = `Learning Rate: ${learningRate}`;
+             document.getElementById('trainingTimeInfo').textContent = `Training Time: ${trainingTime}s`;
+             document.getElementById('finalLossInfo').textContent = `Final Loss: ${finalLoss.toFixed(6)}`;
 
-    // Execute one training step
-    wasmModule.ccall('Train_Network_By_One_Iteration', null, [], []);
+             // Show training info
+             document.getElementById('trainingInfo').style.display = 'block';
 
-    // Get the current loss
-    const currentLoss = wasmModule.ccall('Get_Block_Loss', 'number', [], []);
+             // Enable train button
+             document.getElementById('trainNetworkBtn').disabled = false;
 
-    // Update progress indicator
-    const progressPercent = Math.round((currentIteration / iterations) * 100);
-    progressIndicator.textContent = `Progress: ${progressPercent}% (Iteration ${currentIteration+1}/${iterations}, Loss: ${currentLoss.toFixed(6)})`;
+             // Update results and switch to results tab
+             updateResults();
+             document.querySelector('.tab[data-tab="results"]').click();
 
-    // Increment iteration counter
-    currentIteration++;
+             return;
+         }
 
-    // Schedule the next iteration with a short delay to allow UI updates
-    setTimeout(runTrainingIteration, 0);
-}
+         // Execute one training step
+         wasmModule.ccall('Train_Network_By_One_Iteration', null, [], []);
 
-    // Start the training process
-    runTrainingIteration();
-}
+         // Get the current loss
+         const currentLoss = wasmModule.ccall('Get_Block_Loss', 'number', [], []);
+
+         // Update progress display
+         const progressPercent = Math.round((currentIteration / iterations) * 100);
+         progressBar.style.width = `${progressPercent}%`;
+         progressText.textContent = `Progress: ${progressPercent}% (Iteration ${currentIteration+1}/${iterations}, Loss: ${currentLoss.toFixed(6)})`;
+
+         // Increment iteration counter
+         currentIteration++;
+
+         // Use requestAnimationFrame to ensure UI updates
+         // plus a small delay to allow the UI to actually render between iterations
+         setTimeout(() => {
+             requestAnimationFrame(runTrainingIteration);
+         }, 10); // Small delay of 10ms to allow UI updates
+     }
+
+     // Start the training process
+     requestAnimationFrame(runTrainingIteration);
+ }
 
     // Function to update results after training
     function updateResults() {
@@ -523,3 +582,367 @@
                 <p><strong>Initial Loss:</strong> ${loss}</p>
             `;
 }
+
+ /**
+  * Neural Network Architecture Visualization
+  * Uses D3.js to create an interactive visualization of the neural network
+  */
+ class NetworkVisualizer {
+     constructor(containerId) {
+         this.containerId = containerId;
+         this.container = document.getElementById(containerId);
+
+         // Default dimensions in case container isn't ready
+         this.width = 800;
+         this.height = 400;
+         this.margin = { top: 40, right: 40, bottom: 40, left: 40 };
+         this.neuronRadius = 20;
+         this.colors = {
+             input: '#b8b5e1',    // Light purple
+             hidden: '#8ab5f0',    // Light blue
+             output: '#9cefda',    // Light teal
+             text: '#333333',      // Dark gray
+             connection: '#cccccc' // Light gray
+         };
+
+         this.initialized = false;
+         this.networkData = null;
+     }
+
+     /**
+      * Initialize the SVG element safely
+      */
+     initSvg() {
+         try {
+             // Safety check for container
+             this.container = document.getElementById(this.containerId);
+             if (!this.container || !document.body.contains(this.container)) {
+                 console.warn(`Container #${this.containerId} not found or not in DOM`);
+                 return false;
+             }
+
+             // Get actual dimensions from the container
+             this.width = this.container.clientWidth || this.width;
+
+             // Clear any existing SVG
+             this.container.innerHTML = '';
+
+             // Create SVG element
+             this.svg = d3.select(`#${this.containerId}`)
+                 .append('svg')
+                 .attr('width', this.width)
+                 .attr('height', this.height);
+
+             this.mainGroup = this.svg.append('g')
+                 .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+
+             // Add definitions for arrowheads
+             this.svg.append('defs').append('marker')
+                 .attr('id', 'arrowhead')
+                 .attr('viewBox', '0 -5 10 10')
+                 .attr('refX', 8)
+                 .attr('refY', 0)
+                 .attr('markerWidth', 4)
+                 .attr('markerHeight', 4)
+                 .attr('orient', 'auto')
+                 .append('path')
+                 .attr('d', 'M0,-5L10,0L0,5')
+                 .attr('fill', this.colors.connection);
+
+             // Create tooltip if it doesn't exist
+             if (!document.querySelector('.nn-tooltip')) {
+                 this.tooltip = d3.select('body').append('div')
+                     .attr('class', 'nn-tooltip')
+                     .style('position', 'absolute')
+                     .style('visibility', 'hidden')
+                     .style('background-color', 'white')
+                     .style('border', '1px solid #ddd')
+                     .style('border-radius', '4px')
+                     .style('padding', '8px')
+                     .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+                     .style('font-size', '12px')
+                     .style('pointer-events', 'none')
+                     .style('z-index', '1000');
+             } else {
+                 this.tooltip = d3.select('.nn-tooltip');
+             }
+
+             this.initialized = true;
+             return true;
+         } catch (error) {
+             console.error('Error initializing SVG:', error);
+             return false;
+         }
+     }
+
+     /**
+      * Render the neural network visualization
+      */
+     render(networkStructure) {
+         try {
+             // Store the network data for potential re-renders
+             this.networkData = networkStructure;
+
+             // Initialize SVG if needed
+             if (!this.initialized && !this.initSvg()) {
+                 console.warn('Cannot render: SVG initialization failed');
+                 return;
+             }
+
+             // Safety check - reinitialize if the container has changed
+             const container = document.getElementById(this.containerId);
+             if (!container || this.container !== container) {
+                 if (!this.initSvg()) {
+                     console.warn('Cannot render: SVG reinitialization failed');
+                     return;
+                 }
+             }
+
+             // Clear previous visualization
+             if (this.mainGroup) {
+                 this.mainGroup.selectAll('*').remove();
+             } else {
+                 if (!this.initSvg()) {
+                     console.warn('Cannot render: SVG reinitialization failed');
+                     return;
+                 }
+             }
+
+             // Calculate effective width and height
+             const width = this.width - this.margin.left - this.margin.right;
+             const height = this.height - this.margin.top - this.margin.bottom;
+
+             // Set up layer structure
+             const layers = [
+                 { name: 'Input Layer', neurons: 4, activation: 'Linear' },
+                 ...networkStructure.map((layer, i) => ({
+                     name: `Hidden Layer ${i+1}`,
+                     neurons: layer.neurons,
+                     activation: this._getActivationName(layer.activation)
+                 })),
+                 { name: 'Output Layer', neurons: 1, activation: 'Sigmoid' }
+             ];
+
+             // Calculate horizontal spacing between layers
+             const layerSpacing = width / (layers.length + 1);
+
+             // Create groups for connections and neurons
+             const connectionsGroup = this.mainGroup.append('g').attr('class', 'connections');
+             const neuronsGroup = this.mainGroup.append('g').attr('class', 'neurons');
+
+             // Draw connections first (behind neurons)
+             this._drawConnections(connectionsGroup, layers, layerSpacing, height);
+
+             // Draw neurons
+             this._drawNeurons(neuronsGroup, layers, layerSpacing, height);
+
+             // Add layer labels
+             this._addLayerLabels(layers, layerSpacing, height);
+
+         } catch (error) {
+             console.error('Error rendering network visualization:', error);
+         }
+     }
+
+     /**
+      * Draw neurons for each layer
+      */
+     _drawNeurons(group, layers, layerSpacing, height) {
+         layers.forEach((layer, layerIndex) => {
+             // Calculate vertical spacing for neurons in this layer
+             const maxNeurons = layer.neurons;
+             const neuronSpacing = Math.min(height / (maxNeurons + 1), 50);
+             const layerHeight = neuronSpacing * (maxNeurons - 1);
+             const startY = (height - layerHeight) / 2;
+
+             // Determine neuron color based on layer type
+             let color;
+             if (layerIndex === 0) {
+                 color = this.colors.input;
+             } else if (layerIndex === layers.length - 1) {
+                 color = this.colors.output;
+             } else {
+                 color = this.colors.hidden;
+             }
+
+             // Create neuron circles with data
+             const neurons = group.selectAll(`.neuron-layer-${layerIndex}`)
+                 .data(Array(layer.neurons).fill().map((_, i) => ({
+                     layer: layerIndex,
+                     index: i,
+                     name: layerIndex === 0 ? `Input ${i+1}` :
+                         layerIndex === layers.length - 1 ? 'Output' : `Neuron ${i+1}`,
+                     layerName: layer.name,
+                     activation: layer.activation
+                 })))
+                 .enter()
+                 .append('circle')
+                 .attr('class', `neuron-layer-${layerIndex}`)
+                 .attr('cx', layerSpacing * (layerIndex + 1))
+                 .attr('cy', (d, i) => startY + i * neuronSpacing)
+                 .attr('r', this.neuronRadius)
+                 .attr('fill', color)
+                 .attr('stroke', '#666')
+                 .attr('stroke-width', 1)
+                 .style('cursor', 'pointer');
+
+             // Add interactivity
+             if (this.tooltip) {
+                 neurons
+                     .on('mouseover', (event, d) => {
+                         this.tooltip
+                             .html(`<strong>${d.name}</strong><br/>
+                                  Layer: ${d.layerName}<br/>
+                                  ${layerIndex > 0 ? `Activation: ${d.activation}` : ''}`)
+                             .style('visibility', 'visible')
+                             .style('left', `${event.pageX + 10}px`)
+                             .style('top', `${event.pageY + 10}px`);
+
+                         // Highlight the neuron
+                         d3.select(event.currentTarget)
+                             .attr('stroke', '#000')
+                             .attr('stroke-width', 2);
+                     })
+                     .on('mousemove', (event) => {
+                         this.tooltip
+                             .style('left', `${event.pageX + 10}px`)
+                             .style('top', `${event.pageY + 10}px`);
+                     })
+                     .on('mouseout', (event) => {
+                         this.tooltip.style('visibility', 'hidden');
+                         d3.select(event.currentTarget)
+                             .attr('stroke', '#666')
+                             .attr('stroke-width', 1);
+                     });
+             }
+         });
+     }
+
+     /**
+      * Draw connections between neurons
+      */
+     _drawConnections(group, layers, layerSpacing, height) {
+         for (let layerIndex = 0; layerIndex < layers.length - 1; layerIndex++) {
+             const sourceLayer = layers[layerIndex];
+             const targetLayer = layers[layerIndex + 1];
+
+             // Calculate vertical spacing
+             const sourceNeuronSpacing = Math.min(height / (sourceLayer.neurons + 1), 50);
+             const sourceLayerHeight = sourceNeuronSpacing * (sourceLayer.neurons - 1);
+             const sourceStartY = (height - sourceLayerHeight) / 2;
+
+             const targetNeuronSpacing = Math.min(height / (targetLayer.neurons + 1), 50);
+             const targetLayerHeight = targetNeuronSpacing * (targetLayer.neurons - 1);
+             const targetStartY = (height - targetLayerHeight) / 2;
+
+             // Create connections
+             for (let i = 0; i < sourceLayer.neurons; i++) {
+                 for (let j = 0; j < targetLayer.neurons; j++) {
+                     group.append('line')
+                         .attr('x1', layerSpacing * (layerIndex + 1))
+                         .attr('y1', sourceStartY + i * sourceNeuronSpacing)
+                         .attr('x2', layerSpacing * (layerIndex + 2))
+                         .attr('y2', targetStartY + j * targetNeuronSpacing)
+                         .attr('stroke', this.colors.connection)
+                         .attr('stroke-width', 1)
+                         .attr('stroke-opacity', 0.5)
+                         .attr('marker-end', 'url(#arrowhead)');
+                 }
+             }
+         }
+     }
+
+     /**
+      * Add labels for each layer
+      */
+     _addLayerLabels(layers, layerSpacing, height) {
+         layers.forEach((layer, layerIndex) => {
+             this.mainGroup.append('text')
+                 .attr('x', layerSpacing * (layerIndex + 1))
+                 .attr('y', height + 30)
+                 .attr('text-anchor', 'middle')
+                 .attr('font-size', '14px')
+                 .attr('font-weight', 'bold')
+                 .attr('fill', this.colors.text)
+                 .text(layer.name);
+         });
+     }
+
+     /**
+      * Convert activation ID to name
+      */
+     _getActivationName(activationId) {
+         const activations = {
+             0: 'ReLU',
+             1: 'Sigmoid',
+             2: 'Tanh',
+             3: 'Leaky ReLU',
+             4: 'Swish',
+             5: 'Linear'
+         };
+         return activations[activationId] || 'Unknown';
+     }
+
+     /**
+      * Safely resize the visualization
+      */
+     resize() {
+         try {
+             // Safety check for container
+             const container = document.getElementById(this.containerId);
+             if (!container || !document.body.contains(container)) {
+                 return;
+             }
+
+             // Get new width and update if changed
+             const newWidth = container.clientWidth || this.width;
+             if (newWidth !== this.width && this.svg) {
+                 this.width = newWidth;
+                 this.svg.attr('width', this.width);
+
+                 // Re-render with stored data if available
+                 if (this.networkData) {
+                     this.render(this.networkData);
+                 }
+             }
+         } catch (error) {
+             console.warn('Error during resize:', error);
+         }
+     }
+ }
+
+ // Initialize the visualization system
+ document.addEventListener('DOMContentLoaded', function() {
+     // Wait a bit to ensure DOM is fully loaded
+     setTimeout(() => {
+         try {
+             window.networkVisualizer = new NetworkVisualizer('network-visualization');
+
+             // Add resize handler
+             window.addEventListener('resize', () => {
+                 if (window.networkVisualizer) {
+                     try {
+                         window.networkVisualizer.resize();
+                     } catch (e) {
+                         console.warn('Resize error:', e);
+                     }
+                 }
+             });
+
+             // Handle tab changes
+             const designTab = document.querySelector('.tab[data-tab="design"]');
+             if (designTab) {
+                 designTab.addEventListener('click', () => {
+                     setTimeout(() => {
+                         if (window.networkVisualizer && window.networkBuilt && window.hiddenLayers) {
+                             window.networkVisualizer.render(window.hiddenLayers);
+                         }
+                     }, 50);
+                 });
+             }
+         } catch (error) {
+             console.error('Error initializing network visualizer:', error);
+         }
+     }, 100);
+ });
+

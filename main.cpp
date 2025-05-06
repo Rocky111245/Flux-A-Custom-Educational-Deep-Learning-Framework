@@ -10,7 +10,7 @@
  * separable, requiring a multi-layer network with nonlinear activation functions.
  */
 
-#include "Optimization_Algorithms/Train_Block_by_Backpropagation.h"
+#include "Multi Layer Perceptron/Optimization_Algorithms/Train_Block_by_Backpropagation.h"
 #include "Loss_Functions/Loss_Functions.h"
 #include "Utility_Functions/Utility_Functions.h"
 #include <iomanip>

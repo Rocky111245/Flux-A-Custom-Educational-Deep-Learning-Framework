@@ -4,6 +4,12 @@
     <meta charset="utf-8">
     <title>Neural Network for 4-Bit Parity</title>
     <link rel="stylesheet" type="text/css" href="CSS/styles.css">
+    <!-- Load libraries first -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Load WASM module -->
+    <script src="FLUX_wasm.js"></script>
+    <!-- Load application scripts -->
+    <script src="Javascript/visualizations.js"></script>
 </head>
 <body>
 <div class="container">
@@ -41,6 +47,8 @@
         <div id="networkInfo" style="margin-top: 20px;">
             <h3>Network Information</h3>
             <p>Network structure will appear here after building.</p>
+            <!-- Add visualization container -->
+            <div id="network-visualization" style="width: 100%; height: 400px; margin-top: 20px; background-color: #f9f9f9; border-radius: 8px;"></div>
         </div>
     </div>
 
@@ -109,8 +117,6 @@
     </div>
 </div>
 
-<!-- Load the Emscripten-generated JS -->
-<script src="FLUX_wasm.js"></script>
-<script src="Javascript/visualizations.js"></script>
+
 </body>
 </html>

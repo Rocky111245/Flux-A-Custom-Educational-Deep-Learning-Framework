@@ -238,3 +238,94 @@ button:hover {
     color: #31708f;
     border-left: 4px solid #5bc0de;
 }
+
+/* Network visualization styles */
+#network-visualization {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+    min-height: 400px;
+    position: relative;
+    overflow: hidden;
+}
+
+#network-visualization svg {
+    display: block;
+    max-width: 100%;
+}
+
+.nn-tooltip {
+    transition: opacity 0.2s ease-out;
+    opacity: 0.9;
+    z-index: 1000;
+}
+
+/* Progress bar container */
+.progress-container {
+    width: 100%;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    margin: 15px 0;
+    position: relative;
+    height: 24px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Actual progress bar */
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #4CAF50;
+    transition: width 0.2s ease-in-out;
+    border-radius: 4px;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* Progress text overlay */
+.progress-text {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 12px;
+    font-weight: bold;
+    text-shadow: 0 0 3px rgba(255,255,255,0.8);
+    z-index: 1;
+    padding: 0 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* When progress is high, switch text color for readability
+.progress-bar[style*="width: 5"] ~ .progress-text,
+.progress-bar[style*="width: 6"] ~ .progress-text,
+.progress-bar[style*="width: 7"] ~ .progress-text,
+.progress-bar[style*="width: 8"] ~ .progress-text,
+.progress-bar[style*="width: 9"] ~ .progress-text,
+.progress-bar[style*="width: 100"] ~ .progress-text {
+    color: white;
+    text-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+*/
+
+/* Connection highlighting animation */
+@keyframes connection-pulse {
+    0%, 100% { stroke-width: 1; stroke-opacity: 0.5; }
+    50% { stroke-width: 2; stroke-opacity: 0.8; }
+}
+
+/* Add responsive behavior for smaller screens */
+@media screen and (max-width: 768px) {
+    #network-visualization {
+        height: 300px;
+    }
+}

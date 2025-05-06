@@ -417,7 +417,7 @@ When selecting activation functions for a neural network, consider the following
 
 1. **Problem Type**: For binary classification, sigmoid might be suitable for the output layer, while ReLU or its variants often work well for hidden layers in various tasks.
 
-2. **Network Depth**: Deeper networks may benefit from activation functions that mitigate vanishing gradients, such as ReLU or its variants.
+2. **Network depth**: Deeper networks may benefit from activation functions that mitigate vanishing gradients, such as ReLU or its variants.
 
 3. **Computational Efficiency**: ReLU is computationally efficient, making it a popular choice for large networks.
 

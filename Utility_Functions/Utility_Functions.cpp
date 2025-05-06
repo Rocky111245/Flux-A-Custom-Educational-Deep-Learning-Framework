@@ -8,8 +8,8 @@
 #include <sstream>
 #include <iomanip>
 #include "Utility_Functions.h"
-#include "Optimization_Algorithms/Train_Block_by_Backpropagation.h"
-#include "Neural_Layers/Neural_Layer_Skeleton.h" // For ActivationType
+#include "Multi Layer Perceptron/Optimization_Algorithms/Train_Block_by_Backpropagation.h"
+#include "Multi Layer Perceptron/Neural_Layers/Neural_Layer_Skeleton.h" // For ActivationType
 
 void Matrix_Debug_Print(const Matrix& matrix, const std::string& matrix_name,
                         int layer_number, int precision, bool show_full) {
