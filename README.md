@@ -22,6 +22,8 @@ This framework is ideal for students seeking to grasp the fundamentals of neural
 
 Watch the video on my youtube channel.
 
+**Disclaimer: FlUX is being updated constantly, this video below shows an old version of FLUX, but nevertheless, it shows the overall thought process. (Currently revamped the full architechture, Multi-Layer Perceptron finished, doing Convolutional Neural Networks.)**
+
 [![Watch the video](https://img.youtube.com/vi/2Sr-psavJNk/0.jpg)](https://www.youtube.com/watch?v=2Sr-psavJNk)
 
 
