@@ -24,6 +24,10 @@ Watch the video on my youtube channel.
 
 **Disclaimer: FlUX is being updated constantly, this video below shows an old version of FLUX, but nevertheless, it shows the overall thought process. (Currently revamped the full architechture, Multi-Layer Perceptron finished, doing Convolutional Neural Networks.)**
 
+FLUX Multi-Layer-Perceptron Architechture (Readme Updated-17/05/2025)
+![image](https://github.com/user-attachments/assets/d62f4934-f030-4b0b-985e-91cc7573be6b)
+
+
 [![Watch the video](https://img.youtube.com/vi/2Sr-psavJNk/0.jpg)](https://www.youtube.com/watch?v=2Sr-psavJNk)
 
 
