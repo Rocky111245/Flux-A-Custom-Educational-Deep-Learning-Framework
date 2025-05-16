@@ -12,9 +12,12 @@
 class Kernel : public Tensor {
 public:
     Kernel(int size, int channels) : Tensor(size, size, channels) {}
+    void Kernel_Xavier_Uniform(int number_of_kernels);
+    Tensor Flatten_Kernel() const;
 
     int size() const noexcept { return rows(); }
     int channels() const noexcept { return depth(); }
+
 
 
 };

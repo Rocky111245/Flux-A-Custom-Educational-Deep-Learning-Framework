@@ -10,7 +10,7 @@ int main() {
 
         // Print the image
         std::cout << "MNIST Digit Visualization:" << std::endl;
-        PrintMNISTImageSimple(digit);
+        Print_MNIST_Image_In_Console(digit);
 
         return 0;
     } catch (const std::exception& e) {

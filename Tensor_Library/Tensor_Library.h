@@ -52,7 +52,7 @@ public:
 
 /* ----------------------------- Initialisation ----------------------------- */
 
-void Tensor_Xavier_Uniform(int out_channels);
+void Tensor_Xavier_Uniform(int number_of_kernels);
 
 private:
     int Index(int row, int column, int depth_idx) const noexcept

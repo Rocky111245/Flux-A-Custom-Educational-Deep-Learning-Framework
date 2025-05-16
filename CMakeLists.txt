@@ -120,7 +120,7 @@ else()
     # Add CNN executable separately
     add_executable(CNN_main
             Convolutional_Neural_Networks/main.cpp
-            Convolutional_Neural_Networks/Matrix_Migration_Functions/Matrix_Migration_Functions.cpp
+            Convolutional_Neural_Networks/Utility_Migratory_Functions/Utility_Migratory_Functions.cpp
             ${LOSS_FUNCTIONS_SRC}
             ${NEURAL_BLOCKS_SRC}
             ${NEURAL_LAYERS_SRC}
@@ -129,10 +129,10 @@ else()
             ${UTILITY_FUNCTIONS_SRC}
             Convolutional_Neural_Networks/Kernels/Kernels.cpp
             Convolutional_Neural_Networks/Kernels/Kernels.h
-            Convolutional_Neural_Networks/Covolution_Operations/Convolution_Operations.cpp
-            Convolutional_Neural_Networks/Covolution_Operations/Convolution_Operations.h
             Tensor_Library/Tensor_Library.cpp
             Tensor_Library/Tensor_Library.h
+            Convolutional_Neural_Networks/Convolutional_Layer.cpp
+            Convolutional_Neural_Networks/Convolutional_Layer.h
     )
 
     target_include_directories(CNN_main PRIVATE

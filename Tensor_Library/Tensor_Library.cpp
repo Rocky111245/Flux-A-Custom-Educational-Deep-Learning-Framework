@@ -150,10 +150,10 @@ void Tensor::Set_Channel_Matrix(const Matrix& source, int channel_number)
 /* ------------------------- Xavier Uniform Init ------------------------- */
 
 // Proper Xavier Uniform Initialization for Conv Kernels->Move to kernel class later
-void Tensor::Tensor_Xavier_Uniform(int out_channels)
+void Tensor::Tensor_Xavier_Uniform(int number_of_kernels)
 {
     int fan_in  = depth_ * rows_ * columns_;
-    int fan_out = out_channels * rows_ * columns_;
+    int fan_out = number_of_kernels * rows_ * columns_;
 
     float limit = std::sqrt(6.0f / static_cast<float>(fan_in + fan_out));
     std::mt19937 gen{ std::random_device{}() };
@@ -234,9 +234,6 @@ void Tensor_Subtract_Scalar_ElementWise(Tensor& result,const Tensor& first,const
     int depth=first.depth();
     int row=first.rows();
     int column=first.columns();
-
-    result=Tensor(row,column,depth);
-
     for(int d=0;d<depth;d++){
         for(int r=0;r<row;r++){
             for(int c=0;c<column;c++){
