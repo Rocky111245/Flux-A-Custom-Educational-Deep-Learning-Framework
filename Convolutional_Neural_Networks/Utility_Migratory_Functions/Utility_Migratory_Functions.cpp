@@ -66,7 +66,7 @@ void Print_MNIST_Image_In_Console(const Matrix& mnist_image) {
 
 
 
-Tensor Extract_Patches_Im2rows(const Tensor &padded_input_tensor, const int kernel_size, const int padding_size, const int stride_size) {
+void Extract_Patches_Im2rows(Tensor &im2rows_tensor,const Tensor &padded_input_tensor, const int kernel_size,const int stride_size) {
     int output_rows = (padded_input_tensor.rows() - kernel_size) / stride_size + 1;
     int output_columns = (padded_input_tensor.columns() - kernel_size) / stride_size + 1;
 
@@ -78,7 +78,7 @@ Tensor Extract_Patches_Im2rows(const Tensor &padded_input_tensor, const int kern
     int im2rows_columns = kernel_size * kernel_size;
 
     // Resizing the im2rows tensor in row major order
-    Tensor im2rows_tensor(im2rows_rows, im2rows_columns, padded_input_tensor.depth());
+    im2rows_tensor = Tensor(im2rows_rows, im2rows_columns, padded_input_tensor.depth());
 
     // For all channels
     for(int depth_number = 0; depth_number < padded_input_tensor.depth(); depth_number++) {
@@ -105,9 +105,6 @@ Tensor Extract_Patches_Im2rows(const Tensor &padded_input_tensor, const int kern
             }
         }
     }
-
-    // Return the constructed im2rows tensor
-    return im2rows_tensor;
 }
 
 //this automatically calculates the padding required for the desired kernel size and the output
