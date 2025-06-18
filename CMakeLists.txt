@@ -3,7 +3,6 @@ project(FLUX)
 
 set(CMAKE_CXX_STANDARD 23)
 
-# Include directories for header files
 include_directories(${CMAKE_SOURCE_DIR})  # Root directory
 
 # Define source files grouped by directory
@@ -33,6 +32,16 @@ set(MATRIX_DIMENSION_CHECKS_SRC
 set(WASM_SOURCES
         "Web_Assembly_Modules/src/wasm_exports.cpp"
         "Web_Assembly_Modules/src/wasm_interface.cpp"
+        "Transformer_Architecture/Token_Embedding/Token_Embedding.cpp"
+        "Transformer_Architecture/Token_Embedding/Token_Embedding.h"
+        "Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.cpp"
+        "Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.h"
+        "Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.cpp"
+        "Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.h"
+        "Transformer_Architecture/Embedding_Operations/Embedding_Operations.cpp"
+        "Transformer_Architecture/Embedding_Operations/Embedding_Operations.h"
+        Transformer_Architecture/Tokenizer/Tokenizer.cpp
+        Transformer_Architecture/Tokenizer/Tokenizer.h
 )
 
 # Detect if we're building with Emscripten
@@ -42,10 +51,9 @@ if(EMSCRIPTEN)
     # (A) Create an Emscripten "MatrixLibrary" from source,
     add_library(MatrixLibrary STATIC
             "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/MatrixLibrary.cpp"
-            # Add other .cpp if needed
     )
 
-    # Include Headers.
+
     target_include_directories(MatrixLibrary PUBLIC
             "D:/Github Files/C++_Matrix_Library_for_Neural_Networks"
     )
@@ -104,6 +112,16 @@ else()
             ${UTILITY_FUNCTIONS_SRC}
             Tensor_Library/Tensor_Library.cpp
             Tensor_Library/Tensor_Library.h
+            "Transformer_Architecture/Token_Embedding/Token_Embedding.cpp"
+            "Transformer_Architecture/Token_Embedding/Token_Embedding.h"
+            "Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.cpp"
+            "Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.h"
+            "Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.cpp"
+            "Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.h"
+            "Transformer_Architecture/Embedding_Operations/Embedding_Operations.cpp"
+            "Transformer_Architecture/Embedding_Operations/Embedding_Operations.h"
+            Transformer_Architecture/Tokenizer/Tokenizer.cpp
+            Transformer_Architecture/Tokenizer/Tokenizer.h
     )
     target_include_directories(${PROJECT_NAME} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks")
     target_link_directories(${PROJECT_NAME} PRIVATE "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug")
@@ -117,7 +135,7 @@ else()
     )
 
 
-    # Add CNN executable separately
+
     add_executable(CNN_main
             Convolutional_Neural_Networks/main.cpp
             Convolutional_Neural_Networks/Utility_Migratory_Functions/Utility_Migratory_Functions.cpp
@@ -133,6 +151,10 @@ else()
             Tensor_Library/Tensor_Library.h
             Convolutional_Neural_Networks/Convolutional_Layer.cpp
             Convolutional_Neural_Networks/Convolutional_Layer.h
+            "Convolutional_Neural_Networks/Padding Functions/Tensor_Padding.cpp"
+            "Convolutional_Neural_Networks/Padding Functions/Tensor_Padding.h"
+            Convolutional_Neural_Networks/Pooling_Layers.cpp
+            Convolutional_Neural_Networks/Pooling_Layers.h
     )
 
     target_include_directories(CNN_main PRIVATE
@@ -150,6 +172,42 @@ else()
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug/libMatrixLibrary.dll"
             $<TARGET_FILE_DIR:CNN_main>
+    )
+
+
+    add_executable(Transformer_main
+            Transformer_Architecture/main.cpp
+            Transformer_Architecture/Tokenizer/Tokenizer.cpp
+            Transformer_Architecture/Token_Embedding/Token_Embedding.cpp
+            Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.cpp
+            Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.cpp
+            Transformer_Architecture/Embedding_Operations/Embedding_Operations.cpp
+            ${LOSS_FUNCTIONS_SRC}
+            ${NEURAL_BLOCKS_SRC}
+            ${NEURAL_LAYERS_SRC}
+            ${OPTIMIZATION_ALGORITHMS_SRC}
+            ${MATRIX_DIMENSION_CHECKS_SRC}
+            ${UTILITY_FUNCTIONS_SRC}
+            Tensor_Library/Tensor_Library.cpp
+            Transformer_Architecture/main.cpp
+
+    )
+
+    target_include_directories(Transformer_main PRIVATE
+            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks"
+            "${CMAKE_SOURCE_DIR}/Transformer_Architecture"
+    )
+
+    target_link_directories(Transformer_main PRIVATE
+            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug"
+    )
+
+    target_link_libraries(Transformer_main PRIVATE libMatrixLibrary)
+
+    add_custom_command(TARGET Transformer_main POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "D:/Github Files/C++_Matrix_Library_for_Neural_Networks/cmake-build-debug/libMatrixLibrary.dll"
+            $<TARGET_FILE_DIR:Transformer_main>
     )
 
 endif()
