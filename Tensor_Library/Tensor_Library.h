@@ -1,4 +1,3 @@
-
 #ifndef _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_TENSOR_LIBRARY_H
 #define _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_TENSOR_LIBRARY_H
 
@@ -13,68 +12,103 @@
 #include <stdexcept>    // std::invalid_argument
 #include <algorithm>    // std::fill, std::copy
 #include <cassert>      // optional bounds checking
+#include <variant>      // std::variant
 
+// Forward declaration
 class Matrix;
 
-/* ==============================  Tensor Class  ============================== */
-class Tensor
+/* ==============================  Operation Type Enums  ============================== */
+enum class Single_Tensor_Dependent_Operations {
+    Tensor_Add_Tensor_ElementWise,
+    Tensor_Add_Scalar_ElementWise,
+    Tensor_Subtract_Tensor_ElementWise,
+    Tensor_Subtract_Scalar_ElementWise,
+    Tensor_Add_All_Channels,
+    Tensor_Multiply_Tensor_ElementWise,
+    Tensor_Multiply_Scalar_ElementWise,
+    Tensor_Divide_Tensor_ElementWise,
+    Tensor_Divide_Scalar_ElementWise,
+    Tensor_Transpose
+};
 
-{
+enum class Multi_Tensor_Dependent_Operations {
+    Tensor_Multiply_Tensor
+};
+
+/* ==============================  Tensor Class  ============================== */
+class Tensor {
 public:
-/* ----------------------------- Constructors ----------------------------- */
+    /* ----------------------------- Constructors ----------------------------- */
     Tensor() noexcept;
     Tensor(int rows, int columns, int depth);
-    Tensor(const Tensor& other);
-    Tensor(Tensor&& other) noexcept;
+    Tensor(const Tensor& other);                    // Copy constructor
+    Tensor(Tensor&& other) noexcept;               // Move constructor
 
-/* ----------------------------- Assignment ----------------------------- */
-    Tensor& operator=(const Tensor& other);
-    Tensor& operator=(Tensor&& other) noexcept;
+    /* ----------------------------- Assignment Operators ----------------------------- */
+    Tensor& operator=(const Tensor& other);        // Copy assignment
+    Tensor& operator=(Tensor&& other) noexcept;   // Move assignment
 
-/* ----------------------------- Equality ----------------------------- */
+    /* ----------------------------- Comparison Operators ----------------------------- */
     bool operator==(const Tensor& other) const;
 
-/* ---------------------------------------------------------------------------------
-   ------------------------------ GETTER FUNCTIONS SECTION --------------------------
-   --------------------------------------------------------------------------------- */
-    const float& operator()(int row, int column, int depth) const noexcept;
-    void Get_Channel_Matrix(Matrix& destination, int channel_number) const;
+    /* ----------------------------- Element Access Operators ----------------------------- */
+    const float& operator()(int row, int column, int depth) const noexcept;  // Read access
+    float& operator()(int row, int column, int depth) noexcept;              // Write access
 
-    int rows()    const noexcept ;
-    int columns() const noexcept ;
-    int depth()   const noexcept ;
+    /* ----------------------------- Dimension Getters ----------------------------- */
+    int rows() const noexcept;
+    int columns() const noexcept;
+    int depth() const noexcept;
 
-/* ---------------------------------------------------------------------------------
-   ------------------------------ SETTER FUNCTIONS SECTION --------------------------
-   --------------------------------------------------------------------------------- */
-    float& operator()(int row, int column, int depth) noexcept;
-    void   Set_Channel_Matrix(const Matrix& source, int channel_number);
 
-/* ----------------------------- Initialisation ----------------------------- */
 
-void Tensor_Xavier_Uniform(int number_of_kernels);
+    /* ----------------------------- Channel Operations ----------------------------- */
+    Matrix Get_Channel_Matrix(int channel_number) const;
+    void Set_Channel_Matrix(const Matrix& source, int channel_number);
+
+    /* ----------------------------- In-Place Operations ----------------------------- */
+    void Multiply_ElementWise_Inplace(const Tensor& other);
+
+    /* ----------------------------- Initialization Functions ----------------------------- */
+    void Tensor_Xavier_Uniform(int number_of_kernels);
 
 private:
-    int Index(int row, int column, int depth_idx) const noexcept
-    {
+    /* ----------------------------- Helper Functions ----------------------------- */
+    int Index(int row, int column, int depth_idx) const noexcept {
         return depth_idx * rows_ * columns_ + row * columns_ + column;
     }
 
-    int rows_    = 0;
+    /* ----------------------------- Member Variables ----------------------------- */
+    int rows_ = 0;
     int columns_ = 0;
-    int depth_   = 0;
+    int depth_ = 0;
     std::unique_ptr<float[]> data_;
 };
 
-/* ==============================  Utility Functions  ============================== */
-void Tensor_Add_Tensor_ElementWise      (Tensor& result, const Tensor& first, const Tensor& second);
-void Tensor_Add_Scalar_ElementWise      (Tensor& result, const Tensor& first, float scalar);
-void Tensor_Subtract_Tensor_ElementWise (Tensor& result, const Tensor& first, const Tensor& second);
-void Tensor_Subtract_Scalar_ElementWise (Tensor& result, const Tensor& first, float scalar);
-void Tensor_Add_All_Channels            (Matrix& destination, const Tensor& source);
-void Tensor_Multiply_Tensor_ElementWise (Tensor& result, const Tensor& first, const Tensor& second);
-void Tensor_Multiply_Scalar_ElementWise (Tensor& result, const Tensor& first, float scalar);
-void Tensor_Divide_Tensor_ElementWise(Tensor& result,const Tensor& first,const Tensor& second);
-void Tensor_Divide_Scalar_ElementWise(Tensor& result,const Tensor& first,float scalar);
+/* ==============================  Standalone Utility Functions  ============================== */
+
+/* ----------------------------- Element-wise Tensor Operations ----------------------------- */
+void Tensor_Add_Tensor_ElementWise(Tensor& result, const Tensor& first, const Tensor& second);
+void Tensor_Subtract_Tensor_ElementWise(Tensor& result, const Tensor& first, const Tensor& second);
+void Tensor_Multiply_Tensor_ElementWise(Tensor& result, const Tensor& first, const Tensor& second);
+void Tensor_Divide_Tensor_ElementWise(Tensor& result, const Tensor& first, const Tensor& second);
+
+/* ----------------------------- Scalar Operations ----------------------------- */
+void Tensor_Add_Scalar_ElementWise(Tensor& result, const Tensor& first, float scalar);
+void Tensor_Subtract_Scalar_ElementWise(Tensor& result, const Tensor& first, float scalar);
+void Tensor_Multiply_Scalar_ElementWise(Tensor& result, const Tensor& first, float scalar);
+void Tensor_Divide_Scalar_ElementWise(Tensor& result, const Tensor& first, float scalar);
+
+/* ----------------------------- Tensor-Matrix Operations ----------------------------- */
+void Tensor_Add_All_Channels(Matrix& destination, const Tensor& source);
+void Tensor_Transpose(Tensor& result, const Tensor& input);
+
+
+/* ----------------------------- Tensor Multiplication ----------------------------- */
+void Tensor_Multiply_Tensor(Tensor& result, const Tensor& first, const Tensor& second);
+
+/* ----------------------------- Memory Allocation Functions ----------------------------- */
+std::variant<Matrix, Tensor> Memory_Allocation(Single_Tensor_Dependent_Operations operation_types, const Tensor& input);
+std::variant<Matrix, Tensor> Memory_Allocation(Multi_Tensor_Dependent_Operations binary_operation_types, const Tensor& first_input, const Tensor& second_input);
 
 #endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_TENSOR_LIBRARY_H

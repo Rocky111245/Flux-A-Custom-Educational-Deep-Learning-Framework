@@ -42,6 +42,12 @@ set(WASM_SOURCES
         "Transformer_Architecture/Embedding_Operations/Embedding_Operations.h"
         Transformer_Architecture/Tokenizer/Tokenizer.cpp
         Transformer_Architecture/Tokenizer/Tokenizer.h
+        Transformer_Architecture/Test_Data/Test_Data_Loading_Library.cpp
+        Transformer_Architecture/Test_Data/Test_Data_Loading_Library.h
+        Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.cpp
+        Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.h
+        Transformer_Architecture/Attention_Block/Multi_Head_Attention.cpp
+        Transformer_Architecture/Attention_Block/Multi_Head_Attention.h
 )
 
 # Detect if we're building with Emscripten
@@ -190,6 +196,12 @@ else()
             ${UTILITY_FUNCTIONS_SRC}
             Tensor_Library/Tensor_Library.cpp
             Transformer_Architecture/main.cpp
+            Transformer_Architecture/Test_Data/Test_Data_Loading_Library.cpp
+            Transformer_Architecture/Test_Data/Test_Data_Loading_Library.h
+            Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.cpp
+            Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.h
+            Transformer_Architecture/Attention_Block/Multi_Head_Attention.cpp
+            Transformer_Architecture/Attention_Block/Multi_Head_Attention.h
 
     )
 
