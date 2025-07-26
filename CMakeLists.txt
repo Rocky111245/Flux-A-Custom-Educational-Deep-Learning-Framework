@@ -64,6 +64,12 @@ add_executable(${PROJECT_NAME}
         Tensor_Library/Tensor_Library.cpp
         Tensor_Library/Tensor_Library.h
         ${TRANSFORMER_COMPONENTS}
+        Activation_Function_Derivatives/Activation_Function_Derivatives.cpp
+        Activation_Function_Derivatives/Activation_Function_Derivatives.h
+        Activation_Functions/Activation_Functions.cpp
+        Activation_Functions/Activation_Functions.h
+        Loss_Functions/Tensor_Loss_Functions.cpp
+        Loss_Functions/Tensor_Loss_Functions.h
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE MatrixLibrary)
 
@@ -100,8 +106,8 @@ add_executable(Transformer_main
         ${MATRIX_DIMENSION_CHECKS_SRC}
         ${UTILITY_FUNCTIONS_SRC}
         Tensor_Library/Tensor_Library.cpp
-        Transformer_Architecture/Test_Data/Test_Data_Loading_Library.cpp
-        Transformer_Architecture/Test_Data/Test_Data_Loading_Library.h
+        Activation_Function_Derivatives/Activation_Function_Derivatives.cpp
+        Activation_Functions/Activation_Functions.cpp
         Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.cpp
         Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.h
         Transformer_Architecture/Attention_Block/Multi_Head_Attention.cpp
@@ -112,5 +118,7 @@ add_executable(Transformer_main
         Transformer_Architecture/Residual_and_Normalization/Layer_Normalization.h
         Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Layer.cpp
         Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Layer.h
+        Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Block.cpp
+        Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Block.h
 )
 target_link_libraries(Transformer_main PRIVATE MatrixLibrary)
