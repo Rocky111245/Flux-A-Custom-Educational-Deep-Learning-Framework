@@ -1,0 +1,11 @@
+//
+// Created by rakib on 15/6/2025.
+//
+
+#ifndef _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_FIXED_POSITIONAL_ENCODING_H
+#define _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_FIXED_POSITIONAL_ENCODING_H
+class Tensor;
+
+Tensor Compute_Fixed_Sinusoidal_Encodings_Single_Sequence(const int sequence_length, const int d_model);
+
+#endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_FIXED_POSITIONAL_ENCODING_H

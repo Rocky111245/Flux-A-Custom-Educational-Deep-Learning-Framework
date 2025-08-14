@@ -28,7 +28,9 @@ Token_Embedding::Token_Embedding(const int d_vocab, const int d_model)
 //gets the embedding vector of a SINGLE token
 std::vector<float> Token_Embedding::Get_Token_Embedding_Vector(const int token_id) const
 {
-    assert(token_id < d_vocab_ && "Token ID is not present in the vocabulary, out of bounds");
+    if (token_id>=d_vocab_ ) {
+        throw std::invalid_argument("Token ID out of bounds in Token_Embedding::Get_Token_Embedding_Vector");
+    }
 
     std::vector<float> result;
     result.reserve(d_model_);
