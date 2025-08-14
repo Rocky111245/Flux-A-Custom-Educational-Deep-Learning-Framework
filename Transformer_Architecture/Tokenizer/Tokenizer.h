@@ -11,19 +11,13 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
+class Tensor;
 
-
-void Word_To_PreTokens(std::vector<std::string> &string_vector, const std::string& sentence);
-void Create_Vocabulary(const std::vector<std::string>&string_vector,std::unordered_set<std::string> &vocabulary);
-void Calculate_Bigram_Frequency(const std::vector<std::string>& string_vector,std::unordered_map<std::string,int>& bigram_counts) ;
-void Assign_Token_IDs(std::unordered_map<std::string,int>& tokenized_vocabulary,
-                      const std::unordered_set<std::string>& vocabulary);
-void Greedy_Bigram_Merging(std::vector<std::string>& string_vector,
-                           std::unordered_set<std::string>& vocabulary,
-                           std::unordered_map<std::string,int>& bigram_counts,
-                           int max_vocabulary_size);
-void Tokenize_String(std::vector<int>&tokens,std::unordered_map<std::string,int>& tokenized_vocabulary, const std::vector<std::string>& string_vector);
+Tensor Tokenize_Data(const std::string& file_path,std::unordered_set<std::string>& vocabulary,std::unordered_map<std::string,
+    int>& tokenized_vocabulary, int max_vocabulary_size, int desired_sequence_length, const bool verbose);
 void Print_PreTokens(const std::vector<std::string> &string_vector);
 void Print_Bigram_Frequencies(std::unordered_map<std::string,int>& bigram_counts);
 void Print_Vocabulary_Contents(const std::unordered_set<std::string>& vocabulary);

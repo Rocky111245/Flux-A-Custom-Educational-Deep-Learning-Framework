@@ -1,16 +1,19 @@
 //
 // Created by rakib on 18/6/2025.
 // Updated on 24-26/07/2025
+// Updated on 13/08/2025
 
 #include "Tokenizer.h"
-#include "MatrixLibrary.h"
+#include "Tensor_Library/Tensor_Library.h"
 
 
 /*
  Implementation of Byte-Pair Encoding Algorithm. In this algorithm implementation,contrary to other code in this
- project, special attention was given to the time complexity and C++ and overall software optimization techniques enabled.
+ project, special attention was given to the time complexity and overall software optimization techniques enabled for the
+ BPE Merging, which might reduce readability.
  This is because,in a previous test, the time complexity was so high that respectable data size was taking too long
  to tokenize.
+// Updated on 13/08/2025- BPE is fast enough to tokenize
 */
 
 
@@ -179,6 +182,103 @@ void Tokenize_String(std::vector<int>&tokens,std::unordered_map<std::string,int>
         tokens.emplace_back(token_id);
     }
 }
+//One 2D Tensor stores all tokenized sequences into batches
+Tensor Tensorize_Token_Vector(const std::vector<int>& tokens, const std::unordered_map<std::string,int>& tokenized_vocabulary, const int& desired_sequence_length) {
+    const int content_len    = desired_sequence_length - 2;   // real tokens between SOS/EOS
+    const int pad_id         = tokenized_vocabulary.at("<PAD>");
+    const int sos_id         = tokenized_vocabulary.at("<BOS>");
+    const int eos_id         = tokenized_vocabulary.at("<EOS>");
+
+    // we find the ACTUAL sequences (rows) of tensors we require to accommodate all tokens
+    const float actual_sequence_number =
+        static_cast<float>(tokens.size()) / static_cast<float>(content_len); // keep float precision
+    const int tensor_rows = std::ceil(actual_sequence_number);
+    const int full_sequence_number = static_cast<int>(std::floor(actual_sequence_number));
+    //----------------------------------------------------------------
+
+    // shape: (rows, desired_sequence_length, 1)
+    Tensor all_batches(tensor_rows, desired_sequence_length, 1);
+
+    int token_vector_index = 0;
+
+    // fill complete rows
+    for (int i = 0; i < full_sequence_number; ++i) {
+        all_batches(i, 0, 0) = sos_id;
+        for (int j = 1; j <= content_len; ++j)          // inclusive upper bound
+        {
+            all_batches(i, j, 0) = tokens[token_vector_index++];
+        }
+        all_batches(i, desired_sequence_length - 1, 0) = eos_id;
+    }
+
+    // final partial row
+    if (token_vector_index < static_cast<int>(tokens.size())) {
+        const int row = full_sequence_number;
+        all_batches(row, 0, 0) = sos_id;
+        int col = 1;
+        while (token_vector_index < static_cast<int>(tokens.size())) {
+            all_batches(row, col++, 0) = tokens[token_vector_index++];
+        }
+        all_batches(row, col, 0) = eos_id;              // place EOS immediately after last token
+
+        // pad remainder
+        for (++col; col < desired_sequence_length - 1; ++col) {
+            all_batches(row, col, 0) = pad_id;
+        }
+    }
+
+    return { all_batches };
+}
+
+
+//main driver code. Please call file path as (Load file std::ifstream file("../Transformer_Architecture/Test_Data/test_for_tokenizer.txt");
+//Study Tokenizer.cpp file to understand implementation.
+Tensor Tokenize_Data(const std::string &file_path, std::unordered_set<std::string> &vocabulary, std::unordered_map<std::string, int>& tokenized_vocabulary, int max_vocabulary_size, int desired_sequence_length, const bool verbose)
+{
+    if (verbose) std::cout << "=== BPE TOKENIZER RUNNING ===\n";
+
+    std::ifstream file(file_path);
+    if (!file)
+        throw std::runtime_error("Cannot open file: " + file_path);
+
+    const std::string file_content((std::istreambuf_iterator<char>(file)),
+                                   std::istreambuf_iterator<char>());
+
+    if (verbose)
+        std::cout << "Loaded " << file_content.size() << " characters\n";
+
+    // 1) Pretokenise
+    std::vector<std::string> pretokens;
+    Word_To_PreTokens(pretokens, file_content);
+
+    // 2) Build / reuse caller-supplied vocabulary
+    Create_Vocabulary(pretokens, vocabulary);
+
+    // 3) Merge
+    std::unordered_map<std::string, int> bigram_counts;
+    Calculate_Bigram_Frequency(pretokens, bigram_counts);
+
+    if (verbose) std::cout << "Starting merging operations\n";
+    Greedy_Bigram_Merging(pretokens, vocabulary, bigram_counts, max_vocabulary_size);
+    if (verbose) std::cout << "Ended merging operations\n";
+
+    // 4) Build caller-supplied token→ID map
+    tokenized_vocabulary.clear();
+
+    Assign_Token_IDs(tokenized_vocabulary, vocabulary);
+    if (verbose) std::cout << "Ended Assign_Token_IDs\n";
+
+    // 5) Convert to IDs
+    std::vector<int> token_ids;
+    Tokenize_String(token_ids, tokenized_vocabulary, pretokens);
+    if (verbose) std::cout << "Ended Tokenize_String\n";
+
+    Tensor tokenized_tensor=Tensorize_Token_Vector(token_ids,tokenized_vocabulary,desired_sequence_length);
+    if (verbose) std::cout << "Ended tokenized_tensor\n";
+
+    if (verbose) Print_Vocabulary_Contents(vocabulary);
+    return tokenized_tensor;
+}
 
 
 
@@ -201,7 +301,7 @@ void Print_Vocabulary_Contents(const std::unordered_set<std::string>& vocabulary
     std::cout << "=== VOCABULARY CONTENTS ===" << std::endl;
     std::cout << "Total tokens: " << vocabulary.size() << std::endl;
     for (const auto& token : vocabulary) {
-        std::cout << "\"" << token << "\" ";
+        std::cout << token <<std::endl;;
     }
     std::cout << std::endl << std::endl;
 }
