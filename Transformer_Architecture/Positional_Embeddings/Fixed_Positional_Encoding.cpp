@@ -54,5 +54,45 @@ Tensor Compute_Fixed_Sinusoidal_Encodings_Single_Sequence(const int sequence_len
     return fixed_positional_encoding_tensor;
 }
 
+Tensor Compute_Fixed_Sinusoidal_Encodings_Single_Batch(const int sequence_length, const int d_model, const int number_of_sequences) {
+
+    if (sequence_length <= 0) {
+        throw std::invalid_argument("sequence_length must be positive in Compute_Fixed_Sinusoidal_Encodings_Single_Batch");
+    }
+
+    if (d_model <= 0)
+    {throw std::invalid_argument("d_model must be positive in Compute_Fixed_Sinusoidal_Encodings_Single_Batch");}
+
+    if (number_of_sequences <= 0)
+    {throw std::invalid_argument("number_of_sequences must be positive in Compute_Fixed_Sinusoidal_Encodings_Single_Batch");}
+
+    Tensor fixed_positional_encoding_tensor(sequence_length,d_model,number_of_sequences);
+
+    //adding extra dimension for many sequences
+    for (int i=0;i<number_of_sequences;i++) {
+        for (int pos = 0; pos < sequence_length; pos++) {
+            for (int j = 0; j < d_model; j++) {
+                // Calculate frequency using the correct formula: 2i/d_model for pairs
+                int pair_index = j / 2;  // Which sine-cosine pair we're in
+                float frequency_factor = 2.0f * (float)pair_index / (float)d_model;
+                float frequency = 1.0f / std::pow(10000.0f, frequency_factor);
+
+                if (j % 2 == 0) {
+                    // Even dimension: use sine
+                    fixed_positional_encoding_tensor(pos, j,i) = std::sin((float)pos * frequency);
+                } else {
+                    // Odd dimension: use cosine
+                    fixed_positional_encoding_tensor(pos, j,i) = std::cos((float)pos * frequency);
+                }
+            }
+        }
+
+    }
+    assert(fixed_positional_encoding_tensor.depth() == number_of_sequences && "Wrong number of sequences in"
+    "Compute_Fixed_Sinusoidal_Encodings_Single_Batch");
+
+    return fixed_positional_encoding_tensor;
+}
+
 
 
