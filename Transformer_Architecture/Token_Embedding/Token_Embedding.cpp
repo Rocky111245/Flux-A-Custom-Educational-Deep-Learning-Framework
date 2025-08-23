@@ -43,18 +43,18 @@ std::vector<float> Token_Embedding::Get_Token_Embedding_Vector(const int token_i
 
 // Gets the full embedding tensor for a single sequence in the format [sequence_length[i], d_model, 1]
 // Tensor is 2D here
-Tensor Token_Embedding::Get_Sequence_Embedding_Tensor(const Tensor& token_tensor, const int sequence_number) const {
+Tensor Token_Embedding::Get_Sequence_Embedding_Tensor(const Tensor& final_token_tensors, const int sequence_number) const {
     // Ensure the sequence number is valid
-    if (sequence_number >= token_tensor.rows() ) {
+    if (sequence_number >= final_token_tensors.rows() ) {
         throw std::invalid_argument("Sequence number out of bounds in Token_Embedding::Get_Sequence_Embedding_Tensor");
     }
 
     int token_id=0;
     // Create a tensor that holds the full sequence in its rows
-    Tensor out(token_tensor.columns(), d_model_, 1);
+    Tensor out(final_token_tensors.columns(), d_model_, 1);
 
-    for (int i = 0; i < token_tensor.columns(); ++i) {
-        token_id = token_tensor(sequence_number, i, 0);
+    for (int i = 0; i < final_token_tensors.columns(); ++i) {
+        token_id = final_token_tensors(sequence_number, i, 0);
 
         assert(token_id < d_vocab_ && "Token ID out of bounds");
 
@@ -63,6 +63,39 @@ Tensor Token_Embedding::Get_Sequence_Embedding_Tensor(const Tensor& token_tensor
         }
     }
     return out;
+}
+//  We extract the embeddings for our batch . Final token tensor shape is [sequence_length, d_model, batch_size]
+Tensor Token_Embedding::Get_Batch_Embedding_Tensor(const Tensor& final_token_tensors, const int start_row_number,
+    const int end_row_number) const {
+
+    // Validate input tensor dimensions
+    if (final_token_tensors.depth() != 1) {
+        throw std::invalid_argument("final_token_tensors should have depth 1");
+    }
+
+    const int depth = end_row_number - start_row_number;
+    const int seq_length = final_token_tensors.columns();
+    const int d_model = d_model_;
+
+    // Create a tensor that holds the full sequence in its rows
+    Tensor out(seq_length, d_model, depth);
+
+
+
+    for (int i = 0; i < depth; ++i) {//increase depth after we change the row of the final token tensor
+        for (int j = 0; j < out.rows(); ++j) {
+            int token_id = static_cast<int>(final_token_tensors(start_row_number+i, j, 0));
+            for (int k = 0; k <d_model ; ++k) {
+                out(j,k,i)=embedding_matrix_(token_id, k, 0);
+            }
+        }
+        //we have finished one full row processing
+    }
+    assert(
+        out.depth() == depth && out.columns() == d_model && out.rows() == seq_length &&
+        "Wrong out tensor dimensions in Token_Embedding::Get_Batch_Embedding_Tensor");
+
+    return out; // The final token has the structure [sequence_length, d_model, batch_size]
 }
 
 

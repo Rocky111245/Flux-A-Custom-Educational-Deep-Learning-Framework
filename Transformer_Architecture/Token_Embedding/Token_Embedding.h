@@ -45,7 +45,9 @@ public:
 
     std::vector<float> Token_Embedding::Get_Token_Embedding_Vector(int token_id) const;
     float Get_Embedding_Value(int token_id, int dimension_position) const;
-    Tensor Token_Embedding::Get_Sequence_Embedding_Tensor(const Tensor& token_tensor,int sequence_number) const;
+    Tensor Get_Sequence_Embedding_Tensor(const Tensor& final_token_tensors,int sequence_number) const;
+    Tensor Get_Batch_Embedding_Tensor(const Tensor& final_token_tensors, int start_row_number,
+    int end_row_number) const;
     int Get_Vocab_Size() const;
     int Get_Model_Dimension() const;
 
