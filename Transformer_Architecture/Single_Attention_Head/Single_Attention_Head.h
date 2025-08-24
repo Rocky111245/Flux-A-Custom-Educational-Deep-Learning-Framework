@@ -21,16 +21,17 @@ class Single_Attention_Head {
 public:
     // Constructor takes input tensor and head dimension
     // d_k is typically d_model divided by number of heads
-    Single_Attention_Head(const Tensor &batched_input, int d_k);
+    Single_Attention_Head::Single_Attention_Head(const Tensor &residual_stream_input, int d_k, bool masked_attention);
 
 
 
     // Main function - runs the complete attention computation
     void Forward_Pass();
+    Tensor Get_Output_Clone() const;
+    const Tensor &Get_Output_View() const;
+    Tensor &Get_Output_Mutable();
 
     // Returns the computed attention output tensor
-    Tensor Get_Output() const;
-
 private:
     // Basic configuration
     int d_k_;                        // Head projection size
@@ -39,7 +40,7 @@ private:
     int batch_size_;                 // Number of sequences processed together
 
     // Input data
-    Tensor batched_input_;           // Input tensor [sequence_length, d_model, batch_size]
+    Tensor residual_stream_input_copy_;           // Input tensor [sequence_length, d_model, batch_size]
 
     // Learnable weight matrices - these get trained
     Tensor W_q_;                     // Query projection weights [d_model, d_k, batch_size]
@@ -54,12 +55,16 @@ private:
     Tensor attention_weights_;       // Normalized attention weights [sequence_length, sequence_length, batch_size]
     Tensor output_;                  // Final attention output [sequence_length, d_k, batch_size]
 
+    bool masked_attention_;          // Checks if we want masked attention. For now,
+                                    //I didn't add the pad masking since during training we can drop the last batch(for now).
+
     // Step-by-step computation functions
     void Initialize_Weights();          // Set up Q, K, V weight matrices using Xavier initialization
     void Compute_Projections();         // Transform input into Q, K, V representations
     void Compute_Attention_Scores();    // Calculate similarity scores between queries and keys
     void Apply_Softmax_To_Attention_Scores();  // Convert scores to probability distributions
     void Compute_Attention_Output();    // Generate final context-aware representations
+    void Apply_Causal_Mask();
 };
 
 #endif //_DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_SINGLE_ATTENTION_HEAD_H

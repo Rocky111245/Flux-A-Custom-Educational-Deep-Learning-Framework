@@ -6,27 +6,27 @@
 
 #include "vector"
 #include "Tensor_Library/Tensor_Library.h"
-#include "Single_Attention_Head/Single_Attention_Head.h"
+#include "Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.h"
 
 class Tensor;
 class Single_Attention_Head;
 
 class Multi_Head_Attention {
 public:
-    Multi_Head_Attention(const Tensor &batched_input, int n_heads);
-
-
-        // Initialize all attention heads - each gets the same input but will learn different representations
-        void Initialize_All_Heads();
-
-        // Initialize the output projection matrix that combines all head outputs
-        void Initialize_Output_Projection_Weights();
-
+    explicit Multi_Head_Attention(const Tensor &residual_stream_input, int n_heads);
 
     // Main interface - runs the complete multi-head attention computation
     void Forward_Pass() ;
-    // Getter for the final multi-head attention output.This is a copy. We prefer copies for now.
-    Tensor Get_Output() const;
+
+    // Getters,but we prefer to copy for now until we figure out the full architecture.
+    Tensor Get_Output_Clone() const;
+
+    Tensor& Get_Output_Mutable();
+
+    const Tensor &Get_Output_View() const;
+
+
+
 
 private:
     // Configuration parameters
@@ -37,7 +37,7 @@ private:
     int batch_size_;                 // Number of sequences processed in parallel
 
     // Input tensor shared across all attention heads
-    Tensor batched_input_;           // [sequence_length, d_model, batch_size]
+    Tensor residual_stream_input_copy_;           // [sequence_length, d_model, batch_size]
 
     // The heart of multi-head attention: multiple parallel attention computations
     std::vector<Single_Attention_Head> attention_heads_;
@@ -48,6 +48,11 @@ private:
     Tensor final_output_;            // [sequence_length, d_model, batch_size] - final result
 
     //Internal Functions
+
+    // Initialize all attention heads - each gets the same input but will learn different representations
+    void Initialize_All_Heads();
+    // Initialize the output projection matrix that combines all head outputs
+    void Initialize_Output_Projection_Weights();
     void Compute_All_Head_Outputs();
     void Concatenate_Attention_Heads();
     void Apply_Output_Projection();

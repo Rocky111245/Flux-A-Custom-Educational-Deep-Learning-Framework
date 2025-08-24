@@ -9,21 +9,27 @@
 // modular design gives us great flexibility in designing any number of attention blocks.
 
 
-Multi_Head_Attention::Multi_Head_Attention(const Tensor& batched_input, int n_heads)
-        : batched_input_(batched_input),    //  input goes in
-          n_heads_(n_heads),
-          sequence_length_(batched_input.rows()),
-          d_model_(batched_input.columns()),
-          batch_size_(batched_input.depth()),
-          d_k_(d_model_ / n_heads_),  // Each head processes a fraction of the full embedding
+Multi_Head_Attention::Multi_Head_Attention(const Tensor& residual_stream_input, const int n_heads)
+        : n_heads_(n_heads),    // Each head processes a fraction of the full embedding
+          d_model_(residual_stream_input.columns()),
+          d_k_(d_model_ / n_heads_),
+          sequence_length_(residual_stream_input.rows()),
+          batch_size_(residual_stream_input.depth()),
+          residual_stream_input_copy_(residual_stream_input),
           concatenated_output_(sequence_length_, d_model_, batch_size_),
           W_o_(d_model_, d_model_, batch_size_),    //the final connecting weights that provide connectivity within single attention heads. Without this,
                                                     // the individual attention heads are not understood together to form a proper representation
           final_output_(sequence_length_, d_model_, batch_size_) // output after middle transformation
 {
     // Validate that we can evenly divide the embedding dimension across heads
+    if (n_heads_ <= 0) {
+        throw std::invalid_argument("Multi_Head_Attention::Constructor -> n_heads must be > 0");
+    }
     if (d_model_ % n_heads_ != 0) {
-        throw std::invalid_argument("d_model must be divisible by number of heads");
+        throw std::invalid_argument("Multi_Head_Attention::Constructor -> d_model must be divisible by n_heads");
+    }
+    if (sequence_length_ <= 0 || batch_size_ <= 0 || d_model_ <= 0) {
+        throw std::invalid_argument("Multi_Head_Attention::Constructor -> Invalid tensor dimensions");
     }
 
     // Initialize all attention heads - each gets the same input but will learn different representations
@@ -41,7 +47,15 @@ void Multi_Head_Attention:: Forward_Pass() {
 }
 
 // Getter for the final multi-head attention output.This is a copy. We prefer copies for now.
-Tensor Multi_Head_Attention::Get_Output() const {
+Tensor Multi_Head_Attention::Get_Output_Clone() const {
+    return final_output_;
+}
+
+Tensor& Multi_Head_Attention::Get_Output_Mutable()  {
+    return final_output_;
+}
+
+const Tensor& Multi_Head_Attention::Get_Output_View() const {
     return final_output_;
 }
 
@@ -51,31 +65,30 @@ Tensor Multi_Head_Attention::Get_Output() const {
 void Multi_Head_Attention::Initialize_All_Heads() {
     attention_heads_.clear();
     attention_heads_.reserve(n_heads_);
-
     // Pass the full input to the attention heads. They will divide the dimensions as needed.
     for (int head_idx = 0; head_idx < n_heads_; ++head_idx) {
         // This allows different heads to attend to different types of relationships
-        attention_heads_.emplace_back(batched_input_, d_k_);
+        attention_heads_.emplace_back(residual_stream_input_copy_, d_k_,true);
+    }
+
+    if (attention_heads_.size() != static_cast<size_t>(n_heads_)) {
+        throw std::runtime_error("Multi_Head_Attention::Initialize_All_Heads -> Head initialization count mismatch");
     }
 }
 
 // Step 2: Initialize the output projection matrix using Xavier initialization
 void Multi_Head_Attention::Initialize_Output_Projection_Weights() {
-    // Create temporary matrix for Xavier initialization (same weights across all batches)
-    Matrix temp_W_o(d_model_, d_model_, 0.0f);
-    Matrix_Xavier_Uniform(temp_W_o);
-
-    // Copy the same weight matrix to all batch channels
-    // This ensures consistent behavior across batches during training
-    for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
-        W_o_.Set_Channel_Matrix(temp_W_o, batch_idx);
-    }
+    assert(d_model_ > 0 && batch_size_ > 0 &&
+        "Multi_Head_Attention::Initialize_Output_Projection_Weights -> d_model or batch_size invalid");
+    W_o_.Tensor_Xavier_Uniform_Share_Across_Depth();
 }
 
 // Step 3: Run forward pass through each attention head independently
 void Multi_Head_Attention::Compute_All_Head_Outputs() {
     // Each attention head computes its own query/key/value projections and attention weights
     // This parallelism allows the model to attend to different aspects simultaneously
+    assert(!attention_heads_.empty() && "Multi_Head_Attention::Compute_All_Head_Outputs -> No attention heads initialized");
+    //This runs the heavy computation in all attention heads.
     for (int head_idx = 0; head_idx < n_heads_; ++head_idx) {
         attention_heads_[head_idx].Forward_Pass();
     }
@@ -84,49 +97,42 @@ void Multi_Head_Attention::Compute_All_Head_Outputs() {
 // Step 4: Concatenate outputs from all attention heads
 // Concatenate multiple tensors along the column dimension (for attention heads)
 void Multi_Head_Attention::Concatenate_Attention_Heads() {
-    if (attention_heads_.empty()) {
-        throw std::invalid_argument("Cannot concatenate empty attention heads vector");
-    }
 
-    // Collect all outputs once
-    std::vector<Tensor> head_outputs;
-    head_outputs.reserve(attention_heads_.size());
-    for (const auto& head : attention_heads_) {
-        head_outputs.push_back(head.Get_Output());
-    }
+    assert(static_cast<int>(attention_heads_.size()) == n_heads_ &&
+           "Concatenate_Attention_Heads: attention_heads_.size() != n_heads_");
+    assert(d_model_ == n_heads_ * d_k_ &&
+           "Concatenate_Attention_Heads: d_model_ must equal n_heads_ * d_k_");
+    assert(concatenated_output_.rows() == sequence_length_ &&
+           concatenated_output_.columns() == d_model_ &&
+           concatenated_output_.depth() == batch_size_ &&
+           "Concatenate_Attention_Heads: concatenated_output_ shape mismatch");
 
-    // Validate dimensions and calculate total columns
-    int rows = head_outputs[0].rows();
-    int depth = head_outputs[0].depth();
-    int total_columns = 0;
+    // For each batch and token position, copy each head's features into its slot
 
-    for (const auto& output : head_outputs) {
-        if (output.rows() != rows || output.depth() != depth) {
-            throw std::invalid_argument("All attention heads must have same sequence length (rows) and batch size (depth)");
-        }
-        total_columns += output.columns();
-    }
-
-    // Ensure concatenated_output_ has the right dimensions
-    if (concatenated_output_.rows() != rows ||
-        concatenated_output_.columns() != total_columns ||
-        concatenated_output_.depth() != depth) {
-        concatenated_output_ = Tensor(rows, total_columns, depth);
-    }
-    else{
-        throw std::invalid_argument("The concatenated_output_ dimensions are not suitable for the concatenation operation ");
-    }
-
-    for (int d = 0; d < depth; ++d) {           // For each batch
-        for (int r = 0; r < rows; ++r) {        // For each sequence position
+    assert(attention_heads_.size() == static_cast<size_t>(n_heads_) && "Attention head size should match n_heads_ "
+                                                                       "in Concatenate_Attention_Heads");
+    for (int d = 0; d < batch_size_; ++d) {
+        for (int r = 0; r < sequence_length_; ++r) {
             int dest_col = 0;
 
-            for (const auto& head_output : head_outputs) {     // For each attention head output
-                for (int c = 0; c < head_output.columns(); ++c) {  // For each feature in the head
-                    concatenated_output_(r, dest_col, d) = head_output(r, c, d);
-                    dest_col++;
+            for (int h = 0; h < n_heads_; ++h) {
+
+                const Tensor& out = attention_heads_[h].Get_Output_View(); // we only need a view
+
+                // Shape checks per head
+                assert(out.rows()  == sequence_length_ && "Head output rows != sequence_length_");
+                assert(out.columns() == d_k_            && "Head output columns != d_k_");
+                assert(out.depth() == batch_size_      && "Head output depth != batch_size_");
+
+                // Copy the head's d_k_ features for (r, d)
+                for (int c = 0; c < d_k_; ++c) {
+                    concatenated_output_(r, dest_col + c, d) = out(r, c, d);
                 }
+                dest_col += d_k_;
             }
+
+            assert(dest_col == d_model_ &&
+                   "Concatenate_Attention_Heads: dest_col != d_model_ at row");
         }
     }
 }
@@ -136,6 +142,9 @@ void Multi_Head_Attention::Apply_Output_Projection() {
     // Transform concatenated head outputs back to d_model dimensions
     // This allows the model to learn how to best combine information from different heads
     // Mathematical operation: final_output = concatenated_output * W_o
+    assert(concatenated_output_.columns() == d_model_ && "Multi_Head_Attention::Apply_Output_Projection -> Input columns must equal d_model");
+    assert(W_o_.rows() == d_model_ && W_o_.columns() == d_model_ && W_o_.depth()==concatenated_output_.depth() &&
+        "Multi_Head_Attention::Apply_Output_Projection -> W_o shape mismatch");
     Tensor_Multiply_Tensor(final_output_, concatenated_output_, W_o_);
 }
 
