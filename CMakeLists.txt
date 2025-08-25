@@ -120,5 +120,7 @@ add_executable(Transformer_main
         Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Layer.h
         Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Block.cpp
         Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Block.h
+        Transformer_Architecture/Batch_Operations/Batch_Operations.cpp
+        Transformer_Architecture/Batch_Operations/Batch_Operations.h
 )
 target_link_libraries(Transformer_main PRIVATE MatrixLibrary)
