@@ -16,6 +16,8 @@ target_include_directories(MatrixLibrary PUBLIC
 # Define grouped source files
 set(LOSS_FUNCTIONS_SRC
         Loss_Functions/Loss_Functions.cpp
+        Loss_Functions/Tensor_Loss_Functions.cpp
+
 )
 
 set(NEURAL_BLOCKS_SRC

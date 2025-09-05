@@ -1,7 +1,21 @@
 //
-// Created by rakib on 09/07/2025.
-// The methodology is that, this is a self containing layer.No original data being passed through this gets transformed.Every data passed through this has its own copy internally
-//via private variables.
+// Dense neural layer (fully connected + activation) with manual backprop.
+//
+// Overview
+// --------
+// A self-contained computational unit (layer) that maps an input tensor X ∈ R[S, I, B]
+// (sequence length S, input features I, batch size B) to an output tensor
+// A ∈ R[S, N, B] using learnable parameters:
+//   - Weights W ∈ R[N, I, 1]
+//   - Bias   b ∈ R[1, N, 1]
+
+// Reuse
+// -----
+// The layer is designed to be composable. Higher-level "glue" classes can
+// combine multiple instances to form complete models without modifying the
+// internals. For example, an MLP block class can simply reuse the public
+// API of this layer (Resize_Tensors, Initialize, Forward_Pass, Backpropagate,
+// Update_Parameters) to implement a dense MLP stage.
 
 #ifndef _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_H
 #define _DISCRIMINATIVE_DENSE_NEURAL_NETWORK_FRAMEWORK_NEURAL_LAYER_H
@@ -10,7 +24,6 @@
 
 #include "Tensor_Library/Tensor_Library.h"
 
-// Activation function enumeration
 enum class Activation_Type {
     RELU,
     GELU,
@@ -25,10 +38,23 @@ class Neural {
 public:
 
 
-    explicit Neural(const Tensor& input_tensor,int neurons_in_layer, Activation_Type activation_type);
+    explicit Neural(int neurons_in_layer, Activation_Type activation_type);
     void Forward_Pass();
     void Backpropagate(const Tensor& upstream_error_dL_da) ;
 
+
+    void Resize_Tensors(const Tensor &input_tensor);
+    void Initialize_Weights();
+    void Initialize_Biases();
+    void Pre_Activation_Matmul();
+    void Apply_Activation_Function();
+    void Compute_Local_Delta();
+    void Compute_dL_db();
+    void Compute_dL_dw();
+
+    void Update_Parameters(float learning_rate);
+    void Set_Upstream_Error(const Tensor& upstream_error_gradient);
+    void Set_Input(const Tensor& input_tensor);
 
     const Tensor& Get_Downstream_Error();
     const Tensor&  Get_dL_dw() const;
@@ -36,21 +62,22 @@ public:
     const Tensor&  Get_Weights() const;
     const Tensor&  Get_Pre_Activation() const;
     const Tensor&  Get_Activation() const;
-    const Tensor&  Get_Output() const;
+    const Tensor &Get_Input_View() const;
+
+    Tensor Get_Input_Clone() const;
+
+    const Tensor&  Get_Output_View() const;
+
+    Tensor Get_Output_Clone() const;
+
+    Activation_Type Get_Activation_Type() const;
     int Get_Neuron_Count() const;
 
+    void Assert_Invariants() const;
 
-
-    void Update_Parameters(float learning_rate);
-    void Set_Upstream_Error(const Tensor& upstream_error_gradient);
-    void Set_Input(const Tensor& input_tensor);
 
     //Only call this after a full forward pass and backprop cycle
     void Clear_Local_Cache();
-
-
-
-
 
 private:
     //Main variables
@@ -63,35 +90,19 @@ private:
 
 
     //Backpropagation related cache and inputs
-    Tensor dL_da_upstream_layer_error; //upstream error term received
-    Tensor dL_dx_downstream_layer_error; //error to be passed to downstream
+    Tensor dL_da_upstream_layer_error_; //upstream error term received
+    Tensor dL_dx_downstream_layer_error_; //error to be passed to downstream
     Tensor da_dz_; //f'(z) = derivative of the activation function
     Tensor dL_dz_; // local delta (dL/da ∘ da/dz) element-wise multiplication
     Tensor dL_dw_;
     Tensor dL_db_;
-    
+
 
     int number_of_neurons_;         // Total number of neurones we want to data to pass through. This is basically a feature expansion or
     //contraction depending on the neurone number. If neuron number>features in dataset,it is a feature expansion. Representation of a vector into
     //higher dimensions.
     Activation_Type activation_type_;
 
-
-
-    void Initialize_Weights_And_Biases();
-
-
-    void Apply_Activation_Function();
-
-
-
-
-    void Pre_Activation_Matmul();
-
-    void Compute_Local_Delta();
-
-    void Compute_dL_db();
-    void Compute_dL_dw();
 
 };
 
