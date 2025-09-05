@@ -26,9 +26,9 @@ public:
     // huber_delta has default = 1.0f, ignored for other loss types.
     float Compute(const Tensor& predicted, const Tensor& target, float huber_delta = 1.0f);
 
-    const Tensor& Tensor_Loss_Function::Get_Downstream_Error_View() const {return downstream_error_;}
-    Tensor Tensor_Loss_Function::Get_Downstream_Error_Clone() const {return downstream_error_;}
-    int Tensor_Loss_Function::Get_Neurone_Count() const {return neurone_count_;}
+    const Tensor& Get_Downstream_Error_View() const {return downstream_error_;}
+    Tensor Get_Downstream_Error_Clone() const {return downstream_error_;}
+    int Get_Neurone_Count() const {return neurone_count_;}
     tensor_loss_function Get_Type() const { return type_; }
     float Get_Loss() const { return loss_value_;}
 
