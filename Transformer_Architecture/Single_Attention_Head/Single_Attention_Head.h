@@ -21,7 +21,7 @@ class Single_Attention_Head {
 public:
     // Constructor takes input tensor and head dimension
     // d_k is typically d_model divided by number of heads
-    Single_Attention_Head::Single_Attention_Head(const Tensor &residual_stream_input, int d_k, bool masked_attention);
+    Single_Attention_Head(const Tensor &residual_stream_input, int d_k, bool masked_attention);
 
 
 

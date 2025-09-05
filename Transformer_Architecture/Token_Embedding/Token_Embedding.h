@@ -43,7 +43,7 @@ public:
     //                                                   GETTER METHODS                                                               //
     //=================================================================================================================================//
 
-    std::vector<float> Token_Embedding::Get_Token_Embedding_Vector(int token_id) const;
+    std::vector<float>Get_Token_Embedding_Vector(int token_id) const;
     float Get_Embedding_Value(int token_id, int dimension_position) const;
     Tensor Get_Sequence_Embedding_Tensor(const Tensor& final_token_tensors,int sequence_number) const;
     Tensor Get_Batch_Embedding_Tensor(const Tensor& final_token_tensors, int start_row_number,
