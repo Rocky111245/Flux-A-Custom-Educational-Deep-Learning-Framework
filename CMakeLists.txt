@@ -1,128 +1,81 @@
 cmake_minimum_required(VERSION 3.26)
-project(FLUX)
-
+project(FluxNeuralNetworkFramework)
 set(CMAKE_CXX_STANDARD 23)
+include_directories(${CMAKE_SOURCE_DIR})
 
-include_directories(${CMAKE_SOURCE_DIR})  # Root directory
 
-# Matrix Library (local folder version)
-add_library(MatrixLibrary STATIC
-        Cpp-Matrix-Library-for-Neural-Networks/MatrixLibrary.cpp
-)
-target_include_directories(MatrixLibrary PUBLIC
-        ${CMAKE_SOURCE_DIR}/Cpp-Matrix-Library-for-Neural-Networks
-)
+# ============================================
+# SHARED COMPONENT INTERNAL LIBRARIES
+# ============================================
 
-# Define grouped source files
-set(LOSS_FUNCTIONS_SRC
-        Loss_Functions/Loss_Functions.cpp
-        Loss_Functions/Tensor_Loss_Functions.cpp
-
+add_library(NeuralCore STATIC
+        activation-function-derivatives/ActivationFunctionDerivatives.cpp
+        activation-functions/ActivationFunctions.cpp
+        loss-functions/TensorLossFunctions.cpp
+        tensor-library/TensorLibrary.cpp
+        matrix-library/MatrixLibrary.cpp
 )
 
-set(NEURAL_BLOCKS_SRC
-        Multi\ Layer\ Perceptron/Neural_Blocks/Neural_Blocks.cpp
+# ============================================
+# FEED FORWARD MODEL
+# ============================================
+
+add_library(MultiLayerPerceptron STATIC
+        model-architectures/multi-layer-perceptron/mlp-feed-forward/NeuralLayer.cpp
+        model-architectures/multi-layer-perceptron/mlp-feed-forward/NeuralBlock.cpp
+)
+target_link_libraries(MultiLayerPerceptron PUBLIC NeuralCore)
+
+target_include_directories(MultiLayerPerceptron PUBLIC
+        ${CMAKE_SOURCE_DIR}/model-architectures/multi-layer-perceptron/mlp-feed-forward
 )
 
-set(NEURAL_LAYERS_SRC
-        Multi\ Layer\ Perceptron/Neural_Layers/Neural_Layer_Skeleton.cpp
+
+# ============================================
+# TRANSFORMER MODEL
+# ============================================
+
+add_library(TransformerModel STATIC
+        model-architectures/transformers/token_embedding/TokenEmbedding.cpp
+        model-architectures/transformers/positional-embeddings/FixedPositionalEncoding.cpp
+        model-architectures/transformers/embedding-operations/EmbeddingOperations.cpp
+        model-architectures/transformers/tokenizer/Tokenizer.cpp
+        model-architectures/transformers/single-attention-head/SingleAttentionHead.cpp
+        model-architectures/transformers/multi-head-attention/MultiHeadAttention.cpp
+        model-architectures/transformers/residual-stream/ResidualStream.cpp
+        model-architectures/transformers/layer-normalization/LayerNormalization.cpp
+        model-architectures/transformers/batch-operations/BatchOperations.cpp
+)
+target_link_libraries(TransformerModel PUBLIC NeuralCore PUBLIC MultiLayerPerceptron)
+target_include_directories(TransformerModel PUBLIC
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/batch-operations
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/embedding-operations
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/layer-normalization
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/multi-head-attention
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/positional-embeddings
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/residual-stream
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/single-attention-head
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/token_embedding
+        ${CMAKE_SOURCE_DIR}/model-architectures/transformers/tokenizer
 )
 
-set(OPTIMIZATION_ALGORITHMS_SRC
-        Multi\ Layer\ Perceptron/Optimization_Algorithms/Train_Block_by_Backpropagation.cpp
-)
 
-set(UTILITY_FUNCTIONS_SRC
-        Utility_Functions/Utility_Functions.cpp
-)
 
-set(MATRIX_DIMENSION_CHECKS_SRC
-        Matrix_Dimension_Checks/Matrix_Assertion_Checks.cpp
-)
+# ============================================
+# EXECUTABLES
+# ============================================
 
-# Tokenizer/Embedding components (shared between main & transformer)
-set(TRANSFORMER_COMPONENTS
-        Transformer_Architecture/Token_Embedding/Token_Embedding.cpp
-        Transformer_Architecture/Token_Embedding/Token_Embedding.h
-        Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.cpp
-        Transformer_Architecture/Positional_Embeddings/Fixed_Positional_Encoding.h
-        Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.cpp
-        Transformer_Architecture/Positional_Embeddings/Learned_Positional_Embeddings.h
-        Transformer_Architecture/Embedding_Operations/Embedding_Operations.cpp
-        Transformer_Architecture/Embedding_Operations/Embedding_Operations.h
-        Transformer_Architecture/Tokenizer/Tokenizer.cpp
-        Transformer_Architecture/Tokenizer/Tokenizer.h
-)
+add_executable(${PROJECT_NAME} main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE NeuralCore PRIVATE TransformerModel PRIVATE MultiLayerPerceptron)
 
-# --- Main Executable ---
-add_executable(${PROJECT_NAME}
-        main.cpp
-        ${LOSS_FUNCTIONS_SRC}
-        ${NEURAL_BLOCKS_SRC}
-        ${NEURAL_LAYERS_SRC}
-        ${OPTIMIZATION_ALGORITHMS_SRC}
-        ${MATRIX_DIMENSION_CHECKS_SRC}
-        ${UTILITY_FUNCTIONS_SRC}
-        Tensor_Library/Tensor_Library.cpp
-        Tensor_Library/Tensor_Library.h
-        ${TRANSFORMER_COMPONENTS}
-        Activation_Function_Derivatives/Activation_Function_Derivatives.cpp
-        Activation_Function_Derivatives/Activation_Function_Derivatives.h
-        Activation_Functions/Activation_Functions.cpp
-        Activation_Functions/Activation_Functions.h
-        Loss_Functions/Tensor_Loss_Functions.cpp
-        Loss_Functions/Tensor_Loss_Functions.h
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE MatrixLibrary)
-
-# --- CNN Executable ---
-add_executable(CNN_main
-        Convolutional_Neural_Networks/main.cpp
-        Convolutional_Neural_Networks/Utility_Migratory_Functions/Utility_Migratory_Functions.cpp
-        ${LOSS_FUNCTIONS_SRC}
-        ${NEURAL_BLOCKS_SRC}
-        ${NEURAL_LAYERS_SRC}
-        ${OPTIMIZATION_ALGORITHMS_SRC}
-        ${MATRIX_DIMENSION_CHECKS_SRC}
-        ${UTILITY_FUNCTIONS_SRC}
-        Convolutional_Neural_Networks/Kernels/Kernels.cpp
-        Convolutional_Neural_Networks/Kernels/Kernels.h
-        Tensor_Library/Tensor_Library.cpp
-        Convolutional_Neural_Networks/Convolutional_Layer.cpp
-        Convolutional_Neural_Networks/Convolutional_Layer.h
-        Convolutional_Neural_Networks/Padding\ Functions/Tensor_Padding.cpp
-        Convolutional_Neural_Networks/Padding\ Functions/Tensor_Padding.h
-        Convolutional_Neural_Networks/Pooling_Layers.cpp
-        Convolutional_Neural_Networks/Pooling_Layers.h
-)
-target_link_libraries(CNN_main PRIVATE MatrixLibrary)
-
-# --- Transformer Executable ---
 add_executable(Transformer_main
-        Transformer_Architecture/main.cpp
-        ${TRANSFORMER_COMPONENTS}
-        ${LOSS_FUNCTIONS_SRC}
-        ${NEURAL_BLOCKS_SRC}
-        ${NEURAL_LAYERS_SRC}
-        ${OPTIMIZATION_ALGORITHMS_SRC}
-        ${MATRIX_DIMENSION_CHECKS_SRC}
-        ${UTILITY_FUNCTIONS_SRC}
-        Tensor_Library/Tensor_Library.cpp
-        Activation_Function_Derivatives/Activation_Function_Derivatives.cpp
-        Activation_Functions/Activation_Functions.cpp
-        Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.cpp
-        Transformer_Architecture/Single_Attention_Head/Single_Attention_Head.h
-        Transformer_Architecture/Attention_Block/Multi_Head_Attention.cpp
-        Transformer_Architecture/Attention_Block/Multi_Head_Attention.h
-        Transformer_Architecture/Residual_and_Normalization/Residual_Stream.cpp
-        Transformer_Architecture/Residual_and_Normalization/Residual_Stream.h
-        Transformer_Architecture/Residual_and_Normalization/Layer_Normalization.cpp
-        Transformer_Architecture/Residual_and_Normalization/Layer_Normalization.h
-        Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Layer.cpp
-        Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Layer.h
-        Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Block.cpp
-        Transformer_Architecture/MLP_Layers_For_Transformer/Neural_Block.h
-        Transformer_Architecture/Batch_Operations/Batch_Operations.cpp
-        Transformer_Architecture/Batch_Operations/Batch_Operations.h
+        model-architectures/transformers/main.cpp
 )
-target_link_libraries(Transformer_main PRIVATE MatrixLibrary)
+target_link_libraries(Transformer_main PRIVATE TransformerModel)
+
+
+add_executable(MLP_main
+        model-architectures/multi-layer-perceptron/main.cpp
+)
+target_link_libraries(MLP_main PRIVATE MultiLayerPerceptron)
+
