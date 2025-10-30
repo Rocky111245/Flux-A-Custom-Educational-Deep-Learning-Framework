@@ -60,12 +60,27 @@ target_include_directories(TransformerModel PUBLIC
 )
 
 
+# ============================================
+# UTILITY LIBRARIES
+# ============================================
+add_library(WebVisualization STATIC
+        web-visualizations/data-loader/tensor-data-extractor/TensorDataExtractor.cpp
+        web-visualizations/data-loader/binary-serializer/DataFeeder.cpp
+        web-visualizations/data-loader/DataOrchestrator.cpp
+)
+target_link_libraries(WebVisualization PRIVATE NeuralCore PRIVATE TransformerModel)
+target_include_directories(WebVisualization PUBLIC
+        ${CMAKE_SOURCE_DIR}/web-visualizations/data-loader
+)
+
 
 # ============================================
 # EXECUTABLES
 # ============================================
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp
+        web-visualizations/data-loader/DataOrchestrator.cpp
+        web-visualizations/data-loader/DataOrchestrator.h)
 target_link_libraries(${PROJECT_NAME} PRIVATE NeuralCore PRIVATE TransformerModel PRIVATE MultiLayerPerceptron)
 
 add_executable(Transformer_main
@@ -78,4 +93,10 @@ add_executable(MLP_main
         model-architectures/multi-layer-perceptron/main.cpp
 )
 target_link_libraries(MLP_main PRIVATE MultiLayerPerceptron)
+
+
+add_executable(WebVis_main
+        web-visualizations/main.cpp
+)
+target_link_libraries(WebVis_main PRIVATE TransformerModel )
 

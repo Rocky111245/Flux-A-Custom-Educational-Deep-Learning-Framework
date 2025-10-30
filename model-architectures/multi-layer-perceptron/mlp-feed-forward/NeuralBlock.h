@@ -10,14 +10,23 @@
 //run the forward pass,backpropagation engine of multiple neural class layers.
 
 // High-level driver for an MLP-style block. Owns a sequence of `Neural` layers,
-// manages forward and backward passes across them, and applies parameter updates.
-// The block also integrates one or more loss functions (currently the first is used).
+// manages forward and backward passes across them, and applies parameter updates and mechanistic intervention experiments.
+// The block also integrates one or more loss functions (currently only one loss function has been coded).
 
 #ifndef NEURAL_BLOCK_H
 #define NEURAL_BLOCK_H
 #include "NeuralLayer.h"
 #include "loss-functions/TensorLossFunctions.h"
 
+
+enum neurone_intervention_type {
+    ABLATE,
+    MEAN_ABLATE,
+    PATCH,
+    RANDOM,
+    CLAMP,
+    SCALE
+};
 
 class NeuralBlock {
 public:
@@ -42,8 +51,24 @@ public:
    const Tensor &Get_Downstream_Error() const;
 
     void Forward_Pass();
-    float Train(const Tensor &input, const Tensor &target, float learning_rate, int iterations,
-                int print_every = 10);
+    float Train(const Tensor &input, const Tensor &target, float learning_rate, int iterations,int print_every = 10);
+
+
+
+   void Modify_Neurones(int layer_number, neurone_intervention_type intervention_type,
+                        std::initializer_list<int> neurone_indices,
+                        float param1 = -1.0f, float param2 = 1.0f,
+                        const Tensor* source = nullptr);
+
+   bool Is_Training_Complete() const;
+    bool Is_Forward_Pass_Complete() const;
+    bool Is_Backpropagation_Complete() const;
+    bool Is_Update_Block_Complete() const;
+    bool Is_Local_Cache_Cleared() const;
+    bool Is_Block_Cache_Cleared() const;
+
+    void Run_Inference();
+
 
 
 private:
@@ -63,6 +88,8 @@ private:
     bool update_block_called_;
     bool local_cache_cleared_;
     bool block_cache_cleared_;
+    bool training_complete_;
+    bool first_inference_called_;
 
 
     void Construct_Block_Layers();

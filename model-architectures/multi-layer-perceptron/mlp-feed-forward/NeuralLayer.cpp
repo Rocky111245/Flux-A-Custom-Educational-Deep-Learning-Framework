@@ -16,7 +16,7 @@
 // Constructor. A neural layer is a layer of neurons.
 Neural::Neural(const int neurons_in_layer, const Activation_Type activation_type)
     : number_of_neurons_(neurons_in_layer), activation_type_(activation_type) {
-    if (neurons_in_layer <= 0) { throw std::invalid_argument("neurons_in_layer must be > 0"); }
+    if (neurons_in_layer <= 0) { throw std::invalid_argument("Neural constructor: neurons_in_layer must be > 0 "); }
 }
 
 //Initializers
@@ -24,10 +24,10 @@ Neural::Neural(const int neurons_in_layer, const Activation_Type activation_type
 //We can only resize the tensors if we have the input tensor and the number of neurons
 void Neural::Resize_Tensors(const Tensor& input_tensor) {
     const int S = input_tensor.rows();             //S stands for sequence length regarding NLP tasks,or it could be
-                                                    // same as the number of examples
+                                                   // same as the number of examples/samples
     const int I = input_tensor.columns();          //I stands for input features (dimensions)
-    const int B = input_tensor.depth();            //B stands for batch. This could be even just a matrix if depth is 1
-    const int N = number_of_neurons_;                //N stands for number of neurons we want to have in this layer
+    const int B = input_tensor.depth();            //B stands for batch. This could just even be a matrix if depth is 1
+    const int N = number_of_neurons_;              //N stands for number of neurons we want to have in this layer
     if (S <= 0 || I <= 0 || B <= 0) { throw std::invalid_argument("Resize_Tensors: x must have positive dims"); }
 
     // Input copy buffer
@@ -500,4 +500,155 @@ void Neural::Assert_Invariants() const {
     assert(da_dz_.rows() == S && da_dz_.columns() == N && da_dz_.depth() == B);
     assert(dL_da_upstream_layer_error_.rows() == S && dL_da_upstream_layer_error_.columns() == N && dL_da_upstream_layer_error_.depth() == B);
     assert(dL_dx_downstream_layer_error_.rows() == S && dL_dx_downstream_layer_error_.columns() == I && dL_dx_downstream_layer_error_.depth() == B);
+}
+
+//Mechanistic Interpretability related Functions. Only call after full model training.
+//Supported interventions
+
+// 1. Zero ablation - sets neuron to 0 across all positions/batches
+void Neural::Ablate_Neuron(const int neuron_idx) {
+    if (neuron_idx < 0 || neuron_idx >= number_of_neurons_) {
+        throw std::out_of_range("neuron_idx must be in [0, " +std::to_string(number_of_neurons_) + ")");
+    }
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            post_activation_(s, neuron_idx, b) = 0.0f;
+        }
+    }
+}
+
+// 2. Mean ablation - replaces with mean across sequence and batch
+void Neural::Mean_Ablate_Neuron(const int neuron_idx) {
+    if (neuron_idx < 0 || neuron_idx >= number_of_neurons_) {
+        throw std::out_of_range("neuron_idx out of range");
+    }
+
+    double sum = 0.0;  // Use double to prevent overflow
+    const int count = post_activation_.rows() * post_activation_.depth();
+
+    if (count == 0) {
+        throw std::runtime_error("Cannot compute mean on empty tensor");
+    }
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            float val = post_activation_(s, neuron_idx, b);
+            if (!std::isfinite(val)) {
+                throw std::runtime_error("Non-finite value detected in neuron");
+            }
+            sum += static_cast<double>(val);
+        }
+    }
+
+    const auto mean = static_cast<float>(sum / count);
+
+    if (!std::isfinite(mean)) {
+        throw std::runtime_error("Computed mean is non-finite");
+    }
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            post_activation_(s, neuron_idx, b) = mean;
+        }
+    }
+}
+
+// 3. Activation patching - replaces with cached values from any pre-determined tensor
+void Neural::Patch_Activation(const int neuron_idx, const Tensor& source) {
+    if (neuron_idx < 0 || neuron_idx >= number_of_neurons_) {
+        throw std::out_of_range("neuron_idx out of range");
+    }
+
+    if (source.rows() != post_activation_.rows() ||
+        source.columns() != post_activation_.columns() ||
+        source.depth() != post_activation_.depth()) {
+        throw std::invalid_argument("Source tensor dimensions must match");
+    }
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            float val = source(s, neuron_idx, b);
+            if (!std::isfinite(val)) {
+                throw std::runtime_error("Non-finite value in source tensor");
+            }
+            post_activation_(s, neuron_idx, b) = val;
+        }
+    }
+}
+
+// 4. Clamping - bounds neuron values
+void Neural::Clamp_Neuron(const int neuron_idx, const float min_val, const float max_val) {
+    if (neuron_idx < 0 || neuron_idx >= number_of_neurons_) {
+        throw std::out_of_range("neuron_idx out of range");
+    }
+
+    if (!std::isfinite(min_val) || !std::isfinite(max_val)) {
+        throw std::invalid_argument("min_val and max_val must be finite");
+    }
+
+    if (min_val > max_val) {
+        throw std::invalid_argument("min_val must be <= max_val");
+    }
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            const float val = post_activation_(s, neuron_idx, b);
+            post_activation_(s, neuron_idx, b) = std::fmax(min_val, std::fmin(max_val, val));
+        }
+    }
+}
+
+// 5. Scaling - multiplies neuron by factor
+void Neural::Scale_Neuron(const int neuron_idx, const float factor) {
+    if (neuron_idx < 0 || neuron_idx >= number_of_neurons_) {
+        throw std::out_of_range("neuron_idx out of range");
+    }
+
+    if (!std::isfinite(factor)) {
+        throw std::invalid_argument("factor must be finite");
+    }
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            const float val = post_activation_(s, neuron_idx, b);
+
+            if (!std::isfinite(val)) {
+                throw std::runtime_error("Non-finite value in activation");
+            }
+
+            float result = val * factor;
+
+            if (!std::isfinite(result)) {
+                throw std::runtime_error("Scaling produced non-finite value");
+            }
+
+            post_activation_(s, neuron_idx, b) = result;
+        }
+    }
+}
+
+// 6. Randomize -  NeuralLayer.cpp
+void Neural::Randomize_Neuron(const int neuron_idx, const float min_val, const float max_val) {
+    if (neuron_idx < 0 || neuron_idx >= number_of_neurons_) {
+        throw std::out_of_range("neuron_idx out of range");
+    }
+
+    if (!std::isfinite(min_val) || !std::isfinite(max_val)) {
+        throw std::invalid_argument("min_val and max_val must be finite");
+    }
+
+    if (min_val > max_val) {
+        throw std::invalid_argument("min_val must be <= max_val");
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution dist(min_val, max_val);
+
+    for (int s = 0; s < post_activation_.rows(); ++s) {
+        for (int b = 0; b < post_activation_.depth(); ++b) {
+            post_activation_(s, neuron_idx, b) = dist(gen);
+        }
+    }
 }

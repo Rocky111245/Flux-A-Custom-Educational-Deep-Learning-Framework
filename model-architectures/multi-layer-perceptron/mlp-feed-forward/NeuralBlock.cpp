@@ -13,7 +13,7 @@
 NeuralBlock::NeuralBlock(Tensor residual_stream_input, const std::initializer_list<Neural> layer_list, const std::initializer_list<Tensor_Loss_Function> loss_function_list) :
 layers_(layer_list),input_tensor_(std::move(residual_stream_input)),block_size_(layer_list.size()),loss_functions_(loss_function_list),
 block_constructed(false),forward_pass_called_(false),back_propagation_done_(false),upstream_error_set_(false),downstream_error_set_(false),update_block_called_(false),
-local_cache_cleared_(false),block_cache_cleared_(false)
+local_cache_cleared_(false),block_cache_cleared_(false),training_complete_(false),first_inference_called_(false)
 {
     assert(layer_list.size() > 0);
     Construct_Block_Layers();
@@ -25,7 +25,7 @@ void NeuralBlock::Construct_Block_Layers() {
     const size_t L = layers_.size();
     // Layer 0 shapes from block input
     layers_[0].Resize_Tensors(input_tensor_); //we just need the shape of the input
-    layers_[0].Assert_Invariants(); // checks
+    layers_[0].Assert_Invariants(); // size checks
     layers_[0].Initialize_Weights();
     layers_[0].Initialize_Biases();
 
@@ -33,7 +33,7 @@ void NeuralBlock::Construct_Block_Layers() {
     for (size_t i = 1; i < L; ++i) {
         const Tensor& prev_out_shape = layers_[i-1].Get_Output_View(); // allocated by Resize_Tensors
         layers_[i].Resize_Tensors(prev_out_shape);
-        layers_[i].Assert_Invariants();
+        layers_[i].Assert_Invariants();  //size checks
         layers_[i].Initialize_Weights();
         layers_[i].Initialize_Biases();
     }
@@ -280,9 +280,115 @@ float NeuralBlock::Train(const Tensor& input,
         }
     }
 
+    training_complete_=true;
+
     return total_loss / iterations; // Return average loss over N iterations
 }
 
+
+
+
+
+//==============================================================================
+// MECHANISTIC INTERPRETABILITY INTERVENTIONS
+//
+// These functions perform surgical modifications on neuron activations to study
+// model behavior. Only call after training. All indices are 0-based.
+//==============================================================================
+
+
+void NeuralBlock::Modify_Neurones(const int layer_number,
+                                  const neurone_intervention_type intervention_type,
+                                  const std::initializer_list<int> neurone_indices,
+                                  const float param1,  // min_val for clamp/random, factor for scale
+                                  const float param2,  // max_val for clamp/random
+                                  const Tensor* source ) {  // for patch
+
+    if (!training_complete_) {
+        throw std::logic_error("NeuralBlock::Modify_Neurones: Training not complete");
+    }
+    if (!first_inference_called_) {
+        throw std::logic_error("Run_Inference: Run a forward pass first!");
+    }
+
+    if (layer_number < 0 || layer_number > layers_.size()-1) {
+        if (layer_number < 0) {
+            throw std::invalid_argument("NeuralBlock::Modify_Neurones: Layer number is negative");
+        }
+        throw std::invalid_argument("NeuralBlock::Modify_Neurones: Layer number out of range");
+    }
+
+    if (neurone_indices.size() == 0 || neurone_indices.size() > layers_[layer_number].Get_Neuron_Count()) {
+        if (neurone_indices.size() == 0) {
+            throw std::invalid_argument("NeuralBlock::Modify_Neurones: Neurone indices list is empty");
+        }
+        throw std::invalid_argument("NeuralBlock::Modify_Neurones: Neurone indices list exceeds layer size");
+    }
+
+    // {-1} means all neurons in the layer
+    if (neurone_indices.size() == 1 && *neurone_indices.begin() == -1) {
+        for (int n = 0; n < layers_[layer_number].Get_Neuron_Count(); ++n) {
+            switch (intervention_type) {
+                case ABLATE:
+                    layers_[layer_number].Ablate_Neuron(n);
+                    break;
+                case MEAN_ABLATE:
+                    layers_[layer_number].Mean_Ablate_Neuron(n);
+                    break;
+                case RANDOM:
+                    layers_[layer_number].Randomize_Neuron(n, param1, param2);
+                    break;
+                case CLAMP:
+                    layers_[layer_number].Clamp_Neuron(n, param1, param2);
+                    break;
+                case SCALE:
+                    layers_[layer_number].Scale_Neuron(n, param1);
+                    break;
+                case PATCH:
+                    if (source == nullptr) {
+                        throw std::invalid_argument("Source tensor required for PATCH");
+                    }
+                    layers_[layer_number].Patch_Activation(n, *source);
+                    break;
+                default:
+                    throw std::invalid_argument("Unknown intervention type");
+            }
+        }
+        return;
+    }
+
+    // Normal case: iterate specific neurons
+    for (const int idx : neurone_indices) {
+        if (idx < 0 || idx >= layers_[layer_number].Get_Neuron_Count()) {
+            throw std::logic_error("NeuralBlock::Modify_Neurones: Neurone indices list is out of range");
+        }
+        switch (intervention_type) {
+            case ABLATE:
+                layers_[layer_number].Ablate_Neuron(idx);
+                break;
+            case MEAN_ABLATE:
+                layers_[layer_number].Mean_Ablate_Neuron(idx);
+                break;
+            case RANDOM:
+                layers_[layer_number].Randomize_Neuron(idx, param1, param2);
+                break;
+            case CLAMP:
+                layers_[layer_number].Clamp_Neuron(idx, param1, param2);
+                break;
+            case SCALE:
+                layers_[layer_number].Scale_Neuron(idx, param1);
+                break;
+            case PATCH:
+                if (source == nullptr) {
+                    throw std::invalid_argument("Source tensor required for PATCH");
+                }
+                layers_[layer_number].Patch_Activation(idx, *source);
+                break;
+            default:
+                throw std::invalid_argument("Unknown intervention type");
+        }
+    }
+}
 
 
 

@@ -75,9 +75,19 @@ public:
 
     void Assert_Invariants() const;
 
-
     //Only call this after a full forward pass and backprop cycle
     void Clear_Local_Cache();
+
+
+    //Mechanistic Interpretability related Functions. Only call after full model training. EXPERIMENTAL
+
+    // Core interventions for post_activation_. neuron_idx is the neuron number in a particular layer
+    void Ablate_Neuron(int neuron_idx);                           // Set to 0
+    void Mean_Ablate_Neuron(int neuron_idx);                      // Replace with mean across batch/sequence
+    void Patch_Activation(int neuron_idx, const Tensor& source);  // Replace with cached activation
+    void Clamp_Neuron(int neuron_idx, float min_val, float max_val);     // Bound values
+    void Scale_Neuron(int neuron_idx, float factor);              // Multiply by scalar
+    void Randomize_Neuron(int neuron_idx, float min_val, float max_val); //Ramdomize
 
 private:
     //Main variables
@@ -98,7 +108,7 @@ private:
     Tensor dL_db_;
 
 
-    int number_of_neurons_;         // Total number of neurones we want to binary-serializer to pass through. This is basically a feature expansion or
+    int number_of_neurons_;         // Total number of neurones. This is basically a feature expansion or
     //contraction depending on the neurone number. If neuron number>features in dataset,it is a feature expansion. Representation of a vector into
     //higher dimensions.
     Activation_Type activation_type_;
@@ -107,7 +117,7 @@ private:
 };
 
 
-//Let us derive the chain rule for the backpropagation.
+//Let's derive the chain rule for the backpropagation.
 // --- Chain Rule for Backpropagation ---
 //
 // The chain rule allows computation of gradients for weight (w) and bias (b) updates by breaking down dependencies:
