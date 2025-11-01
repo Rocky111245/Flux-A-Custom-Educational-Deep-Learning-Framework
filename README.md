@@ -61,9 +61,7 @@ NeuralBlock network2({shared_encoder, output_layer2});
 
 
 Example of a MLP (Feed-Forward Network) :
-```
-
-
+```cpp
 #include <iostream>
 #include <iomanip>
 #include "tensor-library/TensorLibrary.h"
