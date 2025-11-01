@@ -1,304 +1,285 @@
 # FLUX: A Deep Learning Framework Built from First Principles
 
-[![Watch Demo](https://img.youtube.com/vi/2Sr-psavJNk/0.jpg)](https://www.youtube.com/watch?v=2Sr-psavJNk)
+> **An educational PyTorch/TensorFlow clone with zero external dependencies—pure C++ exposing the mathematics behind neural networks**
+
+---
+
+## Table of Contents
+
+- [What is FLUX?](#what-is-flux)
+- [Why Build This?](#why-build-this)
+- [Project Status](#project-status)
+- [The Tensor Library: Core Foundation](#the-tensor-library-core-foundation)
+- [Multi-Layer Perceptron Architecture](#multi-layer-perceptron-architecture)
+- [Transformer Components](#transformer-components)
+- [Convolutional Neural Networks](#convolutional-neural-networks)
+- [Manual Backpropagation: The Heart of Understanding](#manual-backpropagation-the-heart-of-understanding)
+- [Building and Running](#building-and-running)
+- [Project Structure](#project-structure)
+- [Technical Philosophy](#technical-philosophy)
+
+---
 
 ## What is FLUX?
-
 FLUX is an educational deep learning framework that reimplements the core functionality of PyTorch and TensorFlow from scratch, using only C++ and the Standard Template Library. No external dependencies, no black boxes—just pure C++ implementing every matrix multiplication, every gradient calculation, and every optimization step manually.
 
-This is not a production framework. It's an exercise in understanding neural networks by building them from the ground up. Every architectural decision, every memory layout, every backward pass is implemented explicitly to expose the mathematics and engineering that modern ML frameworks abstract away.
+It's an educational and performant exercise in understanding neural networks by building them from the ground up. Every architectural decision, every memory layout, every backward pass is implemented explicitly to expose the mathematics and engineering that modern ML frameworks abstract away.
 
-The framework is built around a custom **3D tensor library** that serves as the computational foundation for all model architectures—Multi-Layer Perceptrons, Convolutional Neural Networks, and Transformers. The tensor library handles all forward and backward operations with explicit gradient tracking, allowing any model configuration to be constructed and trained.
+The framework is built around a custom 3D tensor library (also built from first principles) that serves as the computational foundation for all model architectures—Multi-Layer Perceptrons, Convolutional Neural Networks, and Transformers. The tensor library handles all forward and backward operations with explicit gradient tracking, allowing any model configuration to be constructed and trained.
+
+**Key Characteristics:**
+- **Pure C++**: Only STL, no external libraries (BLAS, cuDNN, Python bindings, etc.)
+- **Zero Abstraction**: Every matrix multiplication, gradient calculation, and weight update is visible and traceable
+- **Educational Focus**: Built to understand neural networks deeply, not for production deployment
+- **RAII Principles**: Smart pointer-based memory management, no manual memory handling
+- **Any Architecture**: Tensor-based foundation supports MLPs, CNNs, and Transformers with unified operations
+
+FLUX provides high-level APIs for easy model construction while maintaining complete transparency. You can build models quickly but every internal operation—forward pass, gradient computation, weight update—is implemented explicitly in readable C++ code.
+
+Example of a MLP (Feed-Forward Network) :
+```
+
+
+#include <iostream>
+#include <iomanip>
+#include "tensor-library/TensorLibrary.h"
+#include "NeuralBlock.h"
+#include "NeuralLayer.h"
+
+
+int main() {
+    try {
+        // ============================================================
+        // Example: Learn 4-bit parity using a simple feedforward network (MLP)
+        // ============================================================
+
+        // ------------------------------------------------------------
+        // Data configuration
+        // ------------------------------------------------------------
+        constexpr int samples  = 16;   // total combinations for 4 binary inputs (2^4)
+        constexpr int features = 4;    // number of input bits
+        constexpr int batch    = 1;    // single batch for demonstration
+
+        Tensor X(samples, features, batch); // input tensor
+        Tensor Y(samples, 1, batch);        // label tensor (target parity)
+
+        // ------------------------------------------------------------
+        // Generate sample input data and expected parity outputs
+        // ------------------------------------------------------------
+        // Each sample represents a unique 4-bit binary input.
+        // The output is 1 if the number of 1-bits is odd, otherwise 0.
+        int row = 0;
+        for (int b3 = 0; b3 <= 1; ++b3)
+            for (int b2 = 0; b2 <= 1; ++b2)
+                for (int b1 = 0; b1 <= 1; ++b1)
+                    for (int b0 = 0; b0 <= 1; ++b0) {
+                        // Input feature assignment
+                        X(row, 0, 0) = static_cast<float>(b0);
+                        X(row, 1, 0) = static_cast<float>(b1);
+                        X(row, 2, 0) = static_cast<float>(b2);
+                        X(row, 3, 0) = static_cast<float>(b3);
+
+                        // Label assignment based on parity
+                        int ones = b0 + b1 + b2 + b3;
+                        Y(row, 0, 0) = (ones % 2 == 1) ? 1.0f : 0.0f;
+                        ++row;
+                    }
+
+        // ------------------------------------------------------------
+        // Hyperparameters
+        // ------------------------------------------------------------
+        constexpr float learning_rate = 0.05f;
+        constexpr int iterations = 5000;
+
+        // ------------------------------------------------------------
+        // Network definition
+        // ------------------------------------------------------------
+        // A minimal three-layer perceptron with non-linear activations.
+        Neural layer1(4, Activation_Type::GELU);
+        Neural layer2(8, Activation_Type::GELU);
+        Neural layer3(1, Activation_Type::SIGMOID);
+
+        // Loss function: Binary cross-entropy
+        Tensor_Loss_Function loss(tensor_loss_function::CROSS_ENTROPY_LOSS, 1);
+
+        // ------------------------------------------------------------
+        // Network assembly
+        // ------------------------------------------------------------
+        // The NeuralBlock connects the layers and loss function together.
+        NeuralBlock block(
+            X,
+            { layer1, layer2, layer3 },
+            { loss }
+        );
+
+        // ------------------------------------------------------------
+        // Training phase
+        // ------------------------------------------------------------
+        // The block is trained using a fixed input–output pair.
+        // Loss is printed periodically for monitoring.
+        const float avg_loss = block.Train(X, Y, learning_rate, iterations, 250);
+        std::cout << "\nAverage loss over " << iterations << " iterations: "
+                  << avg_loss << "\n\n";
+
+        // ------------------------------------------------------------
+        // Evaluation phase
+        // ------------------------------------------------------------
+        // Forward pass on the entire dataset to compute predictions.
+        block.Get_Input_Mutable() = X;
+        block.Forward_Pass();
+        const Tensor& predictions = block.Get_Output_View();
+
+        int correct = 0;
+        std::cout << std::fixed << std::setprecision(4);
+
+        // Display predictions for each 4-bit input
+        for (int i = 0; i < samples; ++i) {
+            int true_label = (Y(i, 0, 0) >= 0.5f) ? 1 : 0;
+            float prob = predictions(i, 0, 0);
+            int predicted_label = (prob >= 0.5f) ? 1 : 0;
+            correct += (predicted_label == true_label);
+
+            // Display bits in the natural left-to-right order (b3 b2 b1 b0)
+            int b0 = static_cast<int>(X(i, 0, 0));
+            int b1 = static_cast<int>(X(i, 1, 0));
+            int b2 = static_cast<int>(X(i, 2, 0));
+            int b3 = static_cast<int>(X(i, 3, 0));
+
+            std::cout << "x=" << b3 << b2 << b1 << b0
+                      << "  y=" << true_label
+                      << "  p=" << prob
+                      << "  pred=" << predicted_label << "\n";
+        }
+
+        // ------------------------------------------------------------
+        // Accuracy summary
+        // ------------------------------------------------------------
+        std::cout << "\nAccuracy: " << correct << "/" << samples
+                  << " (" << (100.0 * correct / samples) << "%)\n";
+
+    } catch (const std::runtime_error& e) {
+        std::cerr << "[Runtime Error] " << e.what() << "\n";
+    } catch (...) {
+        std::cerr << "[Unknown Error] Something went wrong.\n";
+    }
+
+    return 0;
+}
+```
+
+---
 
 ## Why Build This?
 
-Modern deep learning frameworks make it trivially easy to build and train neural networks. You can define a model in a few lines of PyTorch and start training immediately. But this convenience comes at a cost: you never see how backpropagation actually works, how gradients flow through layers, or how memory is managed during training.
+Modern deep learning frameworks make it trivially easy to build and train neural networks. We can define a model in a few lines of PyTorch and start training immediately. But this convenience comes at a cost: we never see how backpropagation actually works, how gradients flow through layers, or how memory is managed during training.
 
-FLUX takes the opposite approach. By implementing everything manually, you are forced to understand:
+**FLUX exists to expose what frameworks abstract away:**
 
-**The Mathematics**: Writing backpropagation by hand reveals the chain rule in action. Computing `∂C/∂w = (∂C/∂a) × h(a) × (∂h/∂a)` isn't just an equation—it's code you write, debug, and optimize.
+- **See the Mathematics**: The equation `∂C/∂w = (∂C/∂a) × h(a) × (∂h/∂a)` isn't abstract notation—it's actual code you can read, modify, and debug. Every gradient flows through explicit tensor operations.
 
-**The Engineering**: How should tensors be laid out in memory? When should you allocate? How do you avoid unnecessary copies? These questions don't arise when using PyTorch, but they're critical for understanding performance.
+- **Understand Memory**: How are tensors stored? When does allocation happen? How does batching work? These questions have concrete answers in the codebase, not hidden behind framework abstractions.
 
-**The Architecture**: Why do Transformers use residual connections? Why does batch normalization help? When you implement these components yourself, their purpose becomes crystal clear.
+- **Trace Everything**: Open source doesn't just mean you *can* read the code—it means the code is *designed* to be read. FLUX architectures (MLPs, CNNs, Transformers) are transparent by design. Follow a gradient from loss back to the first layer.
 
-This project exists to help people understand the internals of neural networks deeply, not to replace existing frameworks. It's a learning tool for anyone who wants to see beyond the abstractions.
+- **Build Intuition**: Implementing backpropagation by hand helped me understand the chain rule at a foundational level. Writing convolution operations reveals why CNNs extract spatial features. Coding attention mechanisms makes Transformers more intuitive.
+
+This framework helps people understand neural network internals deeply, not just use them as black boxes. It's a learning tool for anyone who wants to see beyond the API.
+
+---
 
 ## Project Status
 
-FLUX is a work in progress, developed alongside my research Master's in Computer Science. This is an ambitious, long-term project that continuously evolves as I deepen my understanding of different architectures.
+FLUX is a work in progress, developed alongside my research Master's in Computer Science. This is an ambitious, long-term educational project.
 
-### Multi-Layer Perceptron (Fully Functional)
+### ✅ Multi-Layer Perceptron (Complete & Tested)
+- **Status**: Fully functional, production-ready for educational use
+- **Validation**: Successfully trained on 4-bit parity problem
+- **Testing**: Multi-layer networks converge correctly
+- **Features**: Forward/backward propagation, multiple activation functions, gradient descent optimization, batch processing
 
-The MLP implementation is complete and battle-tested. It successfully trains on multiple datasets and has been validated with the 4-bit parity problem, demonstrating proper gradient flow and convergence. All components—forward propagation, backpropagation, gradient descent, activation functions, and loss computation—work correctly for arbitrary network depths.
+### 🔄 Transformers (Core Components Implemented)
+- **Complete**: BPE tokenizer, token embeddings, positional encoding, single/multi-head attention, layer normalization, residual connections
+- **In Progress**: Full Transformer glue code, training loops, backpropagation, sequence generation
+- **Note**: FLUX is very modular. The MLP block can be used and attached to the transformer block without rewriting code.
 
-### Transformers (Partially Implemented)
+### 🔄 Convolutional Neural Networks (Forward Pass Complete)
+- **Complete**: Convolutional layers, pooling (max/average), padding strategies (VALID/SAME), im2row (specialized algorithm from im2col) algorithm, kernel operations
+- **In Progress**: Backpropagation through conv/pooling layers
+- **Note**: Gradient computation under development
 
-The core building blocks of the Transformer architecture are implemented: tokenization with Byte-Pair Encoding, token embeddings, fixed positional encodings, single-head and multi-head attention mechanisms, layer normalization, and residual connections. The feed-forward network component (which uses the MLP implementation) is ready but not yet integrated into a complete Transformer block. Full assembly and training loops are in progress.
+---
 
-### Convolutional Neural Networks (In Progress)
+## The Tensor Library: Core Foundation
 
-Most CNN components are implemented: convolutional layers with kernel operations, max and average pooling layers, padding strategies (VALID and SAME), and the im2col algorithm for efficient convolution. The primary missing piece is backpropagation through convolutional layers. Forward passes work correctly, but gradient computation for kernels and feature maps is under development.
+The **Tensor class** is FLUX's computational engine. FLUX implements tensor operations from scratch with full visibility.
 
-## Technical Architecture
-
-### The Tensor Library: Foundation of Everything
-
-Unlike frameworks that build on optimized BLAS libraries, FLUX implements its own tensor operations from scratch. The **Tensor class** is the computational workhorse, representing 3D data structures with dimensions `[rows × columns × depth]`:
+### Memory Layout and Implementation
 
 ```cpp
 class Tensor {
 public:
     Tensor(int rows, int columns, int depth);
     
-    // Element access
-    float& operator()(int row, int col, int depth);
-    
-    // Core operations
-    void Tensor_Add(const Tensor& other);
-    void Tensor_Hadamard_Product(const Tensor& other);
-    void Tensor_MatMul(Tensor& result, const Tensor& A, const Tensor& B);
-    
-    // Initialization
-    void Tensor_Xavier_Uniform_MLP(int fan_in, int fan_out);
-    void Tensor_Xavier_Uniform_Conv(int number_of_kernels);
-    void Fill(float value);
+    // Element access: row-major ordering
+    float& operator()(int row, int column, int depth) noexcept;
     
     // Dimensions
-    int rows() const;
-    int columns() const;
-    int depth() const;
+    int rows() const noexcept;
+    int columns() const noexcept;
+    int depth() const noexcept;
+
+private:
+    int rows_ = 0;
+    int columns_ = 0;
+    int depth_ = 0;
+    std::unique_ptr<float[]> data_;  // Contiguous memory, RAII managed
+    
+    // Index computation: depth is slowest dimension
+    int Index(int row, int column, int depth_idx) const noexcept {
+        return depth_idx * rows_ * columns_ + row * columns_ + column;
+    }
 };
 ```
 
-The third dimension serves different purposes depending on the architecture:
-- **MLPs**: Batch size (process multiple samples simultaneously)
-- **CNNs**: Channels (RGB images or feature maps)
-- **Transformers**: Batch size (multiple sequences in parallel)
+**Key Design Decisions:**
 
-This unified representation allows the same tensor operations to power all model types. A matrix multiplication in an MLP uses the same code as a matrix multiplication in a Transformer attention mechanism.
+**Contiguous Memory**: All tensor data stored in a single `std::unique_ptr<float[]>` allocation. No nested arrays, no fragmentation—one contiguous block for cache efficiency.
 
-### Matrix Library: A Legacy Utility
+**Row-Major Ordering**: Index computation is `depth × (rows × cols) + row × cols + col`. This means:
+- **Row** is the fastest-changing dimension (best cache locality for matrix operations)
+- **Column** is the second-fastest
+- **Depth** is the slowest (each depth slice is a complete matrix)
 
-The framework originally used a 2D matrix library, which is still present in the codebase for backward compatibility and simple utility operations. However, the tensor library has superseded it as the primary computational engine. The matrix library exists mainly for operations that don't require batch processing or when working with truly 2D data.
+**3D Structure**: A tensor with depth 3 is literally three matrices stacked in 3D space. For example, `Tensor(28, 28, 3)` represents a 28×28 RGB image with three color channels arranged sequentially in memory.
 
-### Memory Management and RAII
+**Smart Pointer Management**: Using `std::unique_ptr` ensures automatic cleanup, no memory leaks, and clear ownership semantics. All memory management follows strict RAII principles—no manual `new`/`delete` anywhere.
 
-FLUX follows strict C++ RAII (Resource Acquisition Is Initialization) principles. All tensors manage their own memory through `std::unique_ptr<float[]>`, ensuring automatic cleanup and preventing leaks. There are no external dependencies—no Python bindings, no third-party libraries, just the C++ Standard Library.
-
-Memory is allocated once during network initialization:
+### Core Tensor Operations
 
 ```cpp
-void Neural::Resize_Tensors(const Tensor& input_tensor) {
-    const int S = input_tensor.rows();      // Sequence length / samples
-    const int I = input_tensor.columns();   // Input features
-    const int B = input_tensor.depth();     // Batch size
-    const int N = number_of_neurons_;       // Output features
-    
-    // Allocate all tensors upfront
-    input_           = Tensor(S, I, B);
-    weight_          = Tensor(N, I, 1);     // Shared across batch
-    bias_            = Tensor(1, N, 1);
-    pre_activation_  = Tensor(S, N, B);
-    post_activation_ = Tensor(S, N, B);
-    output_          = Tensor(S, N, B);
-    
-    // Gradient tensors
-    dL_dw_  = Tensor(N, I, 1);
-    dL_db_  = Tensor(1, N, 1);
-    dL_dz_  = Tensor(S, N, B);
-    da_dz_  = Tensor(S, N, B);
-    dL_dx_downstream_layer_error_ = Tensor(S, I, B);
-}
+// Element-wise operations
+void Tensor_Add_Tensor_ElementWise(Tensor& result, const Tensor& a, const Tensor& b);
+void Tensor_Multiply_Tensor_ElementWise(Tensor& result, const Tensor& a, const Tensor& b);
+void Tensor_Multiply_Scalar_ElementWise(Tensor& result, const Tensor& a, float scalar);
+
+// Matrix multiplication (batched)
+void Tensor_Multiply_Tensor(Tensor& result, const Tensor& a, const Tensor& b);
+
+// Tensor manipulation
+void Tensor_Transpose(Tensor& result, const Tensor& input);
+void Tensor_Broadcast_At_Depth(Tensor& result, const Tensor& input, int target_depth);
+
+// Initialization
+void Tensor_Xavier_Uniform_MLP(int fan_in, int fan_out);
+void Tensor_Xavier_Uniform_Conv(int number_of_kernels);
 ```
 
-During training, no dynamic allocation occurs. All computations reuse pre-allocated buffers, making the memory footprint predictable and stable.
+These operations power all architectures. The same `Tensor_Multiply_Tensor` function handles every computation for the MLP,CNN,Transformers:
 
-## Supported Model Architectures
+**Unified API, Different Interpretations**: The depth dimension means different things in different contexts (batch size, channels, attention heads), but the underlying operations remain consistent.
 
-### Multi-Layer Perceptron
 
-The MLP implementation demonstrates how to construct and train fully-connected networks. Here's the actual usage pattern from the main file:
-
-```cpp
-#include "NeuralBlock.h"
-#include "tensor-library/TensorLibrary.h"
-
-int main() {
-    // Load your data into tensors
-    Tensor input_data(100, 4, 1);    // 100 samples, 4 features, batch size 1
-    Tensor target_data(100, 1, 1);   // 100 labels
-    
-    // Define the network architecture
-    Neural_Block network;
-    
-    // Add layers sequentially
-    network.Add_Layer(16, Activation_Type::LEAKY_RELU);  // Hidden layer: 16 neurons
-    network.Add_Layer(8, Activation_Type::LEAKY_RELU);   // Hidden layer: 8 neurons
-    network.Add_Layer(1, Activation_Type::SIGMOID);      // Output layer: 1 neuron
-    
-    // Connect input and target data
-    network.Set_Input(input_data);
-    network.Set_Target(target_data);
-    
-    // Initialize weights using Xavier initialization
-    network.Initialize();
-    
-    // Train the network
-    float learning_rate = 0.01f;
-    int epochs = 10000;
-    network.Train(learning_rate, epochs);
-    
-    // Make predictions
-    Tensor test_input(1, 4, 1);
-    Tensor prediction = network.Predict(test_input);
-    
-    return 0;
-}
-```
-
-The `Neural_Block` class manages the entire network as a sequence of `Neural` layer objects. Each layer maintains its own tensors for weights, biases, activations, and gradients. Calling `Train()` automatically handles the forward pass through all layers, loss computation, backward pass, and weight updates.
-
-**Layer Construction**: The input layer is implicit—its size is determined by the input tensor's feature dimension. If your input has 4 features, the first hidden layer automatically expects 4 inputs. This makes the API cleaner since you only specify hidden and output layer sizes.
-
-**Activation Functions**: Each layer can use different activations: `LINEAR`, `RELU`, `LEAKY_RELU`, `SIGMOID`, or `TANH`. The derivatives are computed automatically during backpropagation.
-
-**Training Process**: The `Train()` method runs the standard training loop: forward pass → loss calculation → backward pass → gradient descent update. Loss is computed using the specified loss function (MSE for regression, cross-entropy for classification).
-
-### Convolutional Neural Networks
-
-CNN layers are under active development. The forward pass infrastructure is complete:
-
-```cpp
-// Convolutional layer with 32 filters, 3×3 kernels
-Convolutional_Layer conv1(input_tensor, 32, ConvActivationType::RELU, 
-                          PaddingStrategy::SAME, stride=1);
-
-// Max pooling with 2×2 window
-Pooling_Layer pool1(conv1.output(), 2, stride=2, PoolingStrategy::MAX_POOL);
-```
-
-Convolutional layers support both VALID (no padding) and SAME (zero padding) strategies. The kernel class wraps tensors with convenience methods for weight initialization. Pooling layers implement both max and average pooling with configurable window sizes and strides.
-
-The im2col algorithm is implemented for efficient convolution, transforming image patches into column vectors that can be multiplied by flattened kernels. This is the same technique used by Caffe and other frameworks.
-
-**What's Missing**: Backpropagation through convolutional layers. Computing gradients with respect to kernels and propagating errors back through pooling layers requires careful index tracking, which is currently being implemented and tested.
-
-### Transformers
-
-Transformer components exist as modular building blocks:
-
-```cpp
-// Tokenization
-Tokenizer tokenizer;
-tokenizer.Train_BPE(corpus, num_merges=1000);
-Tensor token_ids = tokenizer.Tokenize(text);
-
-// Embeddings
-TokenEmbedding embeddings(vocab_size, d_model=512);
-Tensor embedded = embeddings.Forward(token_ids);
-
-// Positional encoding
-FixedPositionalEncoding pos_enc(max_seq_len=512, d_model=512);
-Tensor encoded = pos_enc.Add_Positional_Encoding(embedded);
-
-// Multi-head attention
-MultiHeadAttention mha(d_model=512, num_heads=8);
-Tensor attention_output = mha.Forward(encoded, encoded, encoded);
-
-// Layer normalization
-LayerNormalization ln(d_model=512);
-Tensor normalized = ln.Forward(attention_output);
-```
-
-Each component is functional and tested independently. The Byte-Pair Encoding tokenizer implements the full BPE algorithm with vocabulary building and text encoding. Multi-head attention correctly splits the input into multiple heads, computes scaled dot-product attention for each head, and concatenates the results.
-
-**What's Missing**: Full integration into a Transformer block. The feed-forward network (which uses the MLP implementation) needs to be assembled with attention layers, layer normalization, and residual connections into a complete encoder/decoder block. Training loops and sequence generation are not yet implemented.
-
-## Mathematical Implementation
-
-### Manual Backpropagation
-
-Backpropagation is implemented manually, not with automatic differentiation. This is intentional. Understanding how gradients flow backward through a network is the entire point of this project.
-
-For each layer, the backward pass computes three things:
-
-**1. Gradient with respect to pre-activation**: This combines the upstream gradient from the next layer with the derivative of the activation function:
-
-```cpp
-// Element-wise: dL/dz = dL/da ⊙ h'(z)
-dL_dz_ = dL_da_upstream_layer_error_;
-dL_dz_.Tensor_Hadamard_Product(da_dz_);
-```
-
-**2. Gradient with respect to weights**: This is the outer product of the input and the pre-activation gradient:
-
-```cpp
-// Matrix multiply: dL/dW = x^T × dL/dz
-Tensor_MatMul_Transpose_A(dL_dw_, input_, dL_dz_);
-```
-
-**3. Gradient with respect to bias**: Sum the pre-activation gradient across all samples:
-
-```cpp
-// Sum over samples: dL/db = Σ(dL/dz)
-Tensor_Sum_Across_Samples(dL_db_, dL_dz_);
-```
-
-Finally, propagate the error to the previous layer:
-
-```cpp
-// Matrix multiply: dL/dx = dL/dz × W^T  
-Tensor_MatMul_Transpose_B(dL_dx_downstream_layer_error_, dL_dz_, weight_);
-```
-
-This explicit approach makes the chain rule visible in the code. Each operation corresponds directly to a mathematical derivative. There's no magic, no computational graph, just careful application of calculus.
-
-### Forward Propagation
-
-The forward pass for each layer follows the standard neural network formula:
-
-```cpp
-void Neural::Forward_Pass(const Tensor& input) {
-    // Store input for backward pass
-    input_ = input;
-    
-    // Linear transformation: z = W^T × x + b
-    Tensor_MatMul_Transpose_B(pre_activation_, input_, weight_);
-    
-    // Broadcast and add bias
-    Tensor broadcasted_bias;
-    Tensor_Broadcast_At_Depth(broadcasted_bias, bias_, pre_activation_.depth());
-    pre_activation_.Tensor_Add(broadcasted_bias);
-    
-    // Apply activation function: a = h(z)
-    Tensor_Activation_Function(post_activation_, pre_activation_, activation_type_);
-    
-    // Output becomes input to next layer
-    output_ = post_activation_;
-}
-```
-
-### Gradient Descent
-
-Weight updates use vanilla stochastic gradient descent:
-
-```cpp
-void Neural::Update_Weights(float learning_rate) {
-    // W_new = W_old - η × dL/dW
-    Tensor gradient_step = dL_dw_;
-    gradient_step.Tensor_Scalar_Multiply(learning_rate);
-    weight_.Tensor_Subtract(gradient_step);
-    
-    // b_new = b_old - η × dL/db
-    Tensor bias_step = dL_db_;
-    bias_step.Tensor_Scalar_Multiply(learning_rate);
-    bias_.Tensor_Subtract(bias_step);
-}
-```
-
-More sophisticated optimizers (momentum, Adam, RMSprop) are planned but not yet implemented. The goal is to first ensure correctness with the simplest optimizer, then add complexity.
-
+---
 ## Project Structure
 
 ```
@@ -306,168 +287,461 @@ FLUX/
 ├── model-architectures/
 │   ├── multi-layer-perceptron/
 │   │   ├── mlp-feed-forward/
-│   │   │   ├── NeuralLayer.cpp         # Single layer implementation
-│   │   │   ├── NeuralLayer.h
-│   │   │   ├── NeuralBlock.cpp         # Full network container
-│   │   │   └── NeuralBlock.h
-│   │   └── main.cpp                     # Usage examples and tests
-│   │
+│   │   │   ├── NeuralLayer.cpp      # Single layer
+│   │   │   └── NeuralBlock.cpp      # Network container
+│   │   └── main.cpp                 # Working examples
 │   ├── transformers/
-│   │   ├── tokenizer/                   # BPE tokenization
-│   │   ├── token_embedding/             # Embedding lookup
-│   │   ├── positional-embeddings/       # Position encoding
-│   │   ├── single-attention-head/       # Attention mechanism
-│   │   ├── multi-head-attention/        # Multi-head wrapper
-│   │   ├── layer-normalization/         # Layer norm
-│   │   ├── residual-stream/             # Skip connections
-│   │   ├── batch-operations/            # Batch processing
-│   │   └── main.cpp                     # Component tests
-│   │
+│   │   ├── tokenizer/               # BPE implementation
+│   │   ├── token_embedding/         # Embedding layers
+│   │   ├── positional-embeddings/   # Position encoding  
+│   │   ├── single-attention-head/   # Attention mechanism
+│   │   ├── multi-head-attention/    # Multi-head wrapper
+│   │   ├── layer-normalization/     # Layer norm
+│   │   └── residual-stream/         # Skip connections
 │   └── convolutional-neural-networks/
-│       ├── convolutional-layer/         # Conv2D operations
-│       ├── pooling-layer/               # Max/average pooling
-│       ├── kernels/                     # Kernel weight management
-│       ├── padding-functions/           # SAME/VALID padding
-│       └── utility-migratory-functions/ # Im2col and helpers
+│       ├── convolutional-layer/     # Conv2D ops
+│       ├── pooling-layer/           # Pooling ops
+│       ├── kernels/                 # Kernel management
+│       └── padding-functions/       # VALID/SAME padding
 │
 ├── tensor-library/
-│   ├── TensorLibrary.h                  # Main computational engine
+│   ├── TensorLibrary.h              # Main computational engine
 │   └── TensorLibrary.cpp
 │
-├── matrix-library/                       # Legacy 2D operations
+├── matrix-library/                   # Legacy 2D utility
 │   ├── MatrixLibrary.h
 │   └── MatrixLibrary.cpp
 │
-├── activation-functions/
-│   ├── ActivationFunctions.h            # ReLU, Sigmoid, Tanh, etc.
-│   └── ActivationFunctions.cpp
-│
-├── activation-function-derivatives/
-│   ├── ActivationFunctionDerivatives.h  # Gradient computations
-│   └── ActivationFunctionDerivatives.cpp
-│
-├── loss-functions/
-│   ├── TensorLossFunctions.h            # MSE, Cross-entropy
-│   └── TensorLossFunctions.cpp
-│
-└── web-visualizations/                   # Real-time training monitoring
-    ├── data-loader/
-    └── main.cpp                          # WebSocket server
+├── activation-functions/             # ReLU, Sigmoid, Tanh, etc.
+├── activation-function-derivatives/  # Gradient computations
+├── loss-functions/                   # MSE, Cross-entropy
+└── web-visualizations/              # Training monitoring
 ```
 
-The project is organized by model architecture, with shared computational libraries (tensors, activations, loss functions) at the root level. Each architecture has its own main file demonstrating usage patterns.
+**Organization Principle**: Each model architecture has its own directory with components organized by functionality. Shared computational libraries (tensors, activations) live at the root level.
+
+---
+
+## Multi-Layer Perceptron Architecture
+
+The MLP implementation is complete and battle-tested. It demonstrates FLUX's layered architecture: **Neural Layers** organized into **Neural Blocks**.
+
+![FLUX MLP Architecture](https://github.com/user-attachments/assets/d62f4934-f030-4b0b-985e-91cc7573be6b)
+
+### Architecture Components
+
+**Neural Layer**: A single fully-connected layer with its own weights, biases, activation function, and gradient tensors. Each `Neural` object is self-contained—it knows how to forward propagate and backpropagate within itself.
+
+**Neural Block**: A container managing multiple layers as a complete network. The `Neural_Block` class handles:
+- Sequential layer connections (output of layer N feeds into layer N+1)
+- Training loop (forward pass → loss → backward pass → weight updates)
+- Inference (forward pass only)
+
+### Building an MLP
+
+From `model-architectures/multi-layer-perceptron/main.cpp`:
+
+```cpp
+
+#include <iostream>
+#include <iomanip>
+#include "tensor-library/TensorLibrary.h"
+#include "NeuralBlock.h"
+#include "NeuralLayer.h"
+
+
+int main() {
+try {
+// ============================================================
+// Example: Learn 4-bit parity using a simple feedforward network (MLP)
+// ============================================================
+
+        // ------------------------------------------------------------
+        // Data configuration
+        // ------------------------------------------------------------
+        constexpr int samples  = 16;   // total combinations for 4 binary inputs (2^4)
+        constexpr int features = 4;    // number of input bits
+        constexpr int batch    = 1;    // single batch for demonstration
+
+        Tensor X(samples, features, batch); // input tensor
+        Tensor Y(samples, 1, batch);        // label tensor (target parity)
+
+        // ------------------------------------------------------------
+        // Generate sample input data and expected parity outputs
+        // ------------------------------------------------------------
+        // Each sample represents a unique 4-bit binary input.
+        // The output is 1 if the number of 1-bits is odd, otherwise 0.
+        int row = 0;
+        for (int b3 = 0; b3 <= 1; ++b3)
+            for (int b2 = 0; b2 <= 1; ++b2)
+                for (int b1 = 0; b1 <= 1; ++b1)
+                    for (int b0 = 0; b0 <= 1; ++b0) {
+                        // Input feature assignment
+                        X(row, 0, 0) = static_cast<float>(b0);
+                        X(row, 1, 0) = static_cast<float>(b1);
+                        X(row, 2, 0) = static_cast<float>(b2);
+                        X(row, 3, 0) = static_cast<float>(b3);
+
+                        // Label assignment based on parity
+                        int ones = b0 + b1 + b2 + b3;
+                        Y(row, 0, 0) = (ones % 2 == 1) ? 1.0f : 0.0f;
+                        ++row;
+                    }
+
+        // ------------------------------------------------------------
+        // Hyperparameters
+        // ------------------------------------------------------------
+        constexpr float learning_rate = 0.05f;
+        constexpr int iterations = 5000;
+
+        // ------------------------------------------------------------
+        // Network definition
+        // ------------------------------------------------------------
+        // A minimal three-layer perceptron with non-linear activations.
+        Neural layer1(4, Activation_Type::GELU);
+        Neural layer2(8, Activation_Type::GELU);
+        Neural layer3(1, Activation_Type::SIGMOID);
+
+        // Loss function: Binary cross-entropy
+        Tensor_Loss_Function loss(tensor_loss_function::CROSS_ENTROPY_LOSS, 1);
+
+        // ------------------------------------------------------------
+        // Network assembly
+        // ------------------------------------------------------------
+        // The NeuralBlock connects the layers and loss function together.
+        NeuralBlock block(
+            X,
+            { layer1, layer2, layer3 },
+            { loss }
+        );
+
+        // ------------------------------------------------------------
+        // Training phase
+        // ------------------------------------------------------------
+        // The block is trained using a fixed input–output pair.
+        // Loss is printed periodically for monitoring.
+        const float avg_loss = block.Train(X, Y, learning_rate, iterations, 250);
+        std::cout << "\nAverage loss over " << iterations << " iterations: "
+                  << avg_loss << "\n\n";
+
+        // ------------------------------------------------------------
+        // Evaluation phase
+        // ------------------------------------------------------------
+        // Forward pass on the entire dataset to compute predictions.
+        block.Get_Input_Mutable() = X;
+        block.Forward_Pass();
+        const Tensor& predictions = block.Get_Output_View();
+
+        int correct = 0;
+        std::cout << std::fixed << std::setprecision(4);
+
+        // Display predictions for each 4-bit input
+        for (int i = 0; i < samples; ++i) {
+            int true_label = (Y(i, 0, 0) >= 0.5f) ? 1 : 0;
+            float prob = predictions(i, 0, 0);
+            int predicted_label = (prob >= 0.5f) ? 1 : 0;
+            correct += (predicted_label == true_label);
+
+            // Display bits in the natural left-to-right order (b3 b2 b1 b0)
+            int b0 = static_cast<int>(X(i, 0, 0));
+            int b1 = static_cast<int>(X(i, 1, 0));
+            int b2 = static_cast<int>(X(i, 2, 0));
+            int b3 = static_cast<int>(X(i, 3, 0));
+
+            std::cout << "x=" << b3 << b2 << b1 << b0
+                      << "  y=" << true_label
+                      << "  p=" << prob
+                      << "  pred=" << predicted_label << "\n";
+        }
+
+        // ------------------------------------------------------------
+        // Accuracy summary
+        // ------------------------------------------------------------
+        std::cout << "\nAccuracy: " << correct << "/" << samples
+                  << " (" << (100.0 * correct / samples) << "%)\n";
+
+    } catch (const std::runtime_error& e) {
+        std::cerr << "[Runtime Error] " << e.what() << "\n";
+    } catch (...) {
+        std::cerr << "[Unknown Error] Something went wrong.\n";
+    }
+
+    return 0;
+}
+```
+
+
+**Layer Connections**: Each layer stores the previous layer's output as its input. Gradients flow backward through these connections during backpropagation.
+
+### Validation: 4-Bit Parity Problem
+
+The 4-bit parity problem tests whether a network can learn non-linear patterns (XOR-like logic). FLUX successfully trains to 100% accuracy:
+
+![train flux](https://github.com/user-attachments/assets/da0830f2-d9e3-413c-ad5c-28428e23527a)
+
+This validates:
+- ✅ Gradient flow through multiple layers
+- ✅ Activation function derivatives computed correctly
+- ✅ Weight updates converge to optimal solution
+- ✅ Network capacity sufficient for non-linear decision boundaries
+
+### Video Demo (New Version)
+[![Watch the video](https://img.youtube.com/vi/KbjAwbs2PDw/0.jpg)](https://www.youtube.com/watch?v=KbjAwbs2PDw)
+
+### Video Demo (Older Version-More Descriptive)
+[![Watch Demo](https://img.youtube.com/vi/2Sr-psavJNk/0.jpg)](https://www.youtube.com/watch?v=2Sr-psavJNk)
+
+*Note: This video shows an earlier version of FLUX with the same core design patterns (tensor-based architecture, explicit backpropagation). The current implementation is more refined but follows identical principles.*
+
+
+
+---
+
+## Transformer Components
+
+Transformer architecture components are implemented modularly. Each piece works independently but isn't yet assembled into a complete Transformer block.
+
+### Implemented Components
+
+**Byte-Pair Encoding Tokenizer**
+- Full BPE algorithm with vocabulary building
+- Text encoding to token IDs
+- Optimized for reasonable corpus sizes
+
+**Token & Positional Embeddings**
+- Learnable embedding matrix `[vocab_size × d_model]`
+- Fixed sinusoidal positional encoding
+- Embedding arithmetic operations
+
+**Attention Mechanisms**
+- Single attention head with scaled dot-product attention
+- Multi-head attention (splitting, parallel computation, concatenation)
+- Query, Key, Value transformations
+
+**Normalization & Residuals**
+- Layer normalization with learnable parameters
+- Residual stream connections for skip pathways
+
+**Note**: Core components implemented, backpropagation remaining. See `model-architectures/transformers/` for implementation details.
+
+---
+
+## Convolutional Neural Networks
+
+CNN infrastructure has most core implemented (kernels,padding,im2rows algorithm).
+
+### Implemented Features
+
+**Convolutional Layers**
+- Arbitrary kernel sizes and counts
+- Stride and padding configuration
+- Multiple activation functions
+- Xavier initialization for kernels
+
+**Pooling Operations**
+- Max pooling (with index tracking for backprop)
+- Average pooling
+- Configurable window sizes and strides
+
+**Padding Strategies**
+- VALID (no padding): Output size reduces
+- SAME (zero padding): Output size maintained (stride=1)
+
+**Im2Rows Algorithm**
+- A variation of the famous im2col algorithm
+- Efficient convolution via matrix multiplication
+- Transforms image patches to column vectors
+- Multiplies with flattened kernels
+
+
+**Note**:Core components implemented, backpropagation remaining. See `model-architectures/convolutional-neural-networks/` for implementation status.
+
+---
+
+## Manual Backpropagation: The Heart of Understanding
+
+Backpropagation is implemented manually—no automatic differentiation. This is **intentional**. Understanding gradient flow is the entire point.
+However, public APIs are present and can just train a model using model.Train().
+
+### Why Manual Implementation?
+
+**Autograd Hides Everything**: PyTorch's `loss.backward()` is one line. You never see how gradients flow, never debug the chain rule, never understand why vanishing gradients occur.
+
+**Manual Forces Understanding**: Writing backpropagation myself meant:
+- Deriving each gradient mathematically
+- Implementing the chain rule explicitly
+- Tracking tensor dimensions carefully
+- Debugging numerical stability issues
+
+**Educational Value**: We can internalize the mathematics by coding it. The equation `∂C/∂w = (∂C/∂a) × h(a) × (∂h/∂a)` becomes concrete when we write it as tensor operations.
+
+### Backward Pass Implementation
+
+For each neural layer (MLP):
+
+```cpp
+// Backpropagation through fully-connected layer (manual, no autograd)
+//
+// Forward pass per layer:
+//   Shapes:
+//     Input X:           [S, I, B]  (sequence/samples, input-dim, batch)
+//     Weights W:         [N, I, 1]  (output-neurons, input-dim, shared across batch)
+//     Bias b:            [1, N, 1]  (shared across batch)
+//     Pre-activation z:  [S, N, B]
+//     Post-activation a: [S, N, B]
+//
+//   Operations:
+//     z = X · W^T + b          // b broadcast over S and B
+//     a = f(z)
+//
+// Backward pass (let δ := dL/dz):
+//   Given: dL/da ∈ [S, N, B] from next layer
+//
+//   1) Local delta:
+//      δ = (dL/da) ⊙ f'(z)                       // [S, N, B]
+//
+//   2) Weight gradients:
+//      dL/dW = Σ_B ( X^T · δ )                   // [N, I, 1]
+//        where X^T · δ : [I, S, B] × [S, N, B] → [I, N, B]
+//        (matmul sums over sequence S), then Σ over batch B → [I, N],
+//        then transpose → [N, I, 1]
+//
+//   3) Bias gradients:
+//      dL/db = Σ_{B,S} δ                         // [1, N, 1]
+//
+//   4) Error to previous layer:
+//      dL/dX = δ · W                              // [S, I, B]
+//
+// Execution order:
+//   1) Receive dL/da
+//   2) Compute δ = (dL/da) ⊙ f'(z)
+//   3) Compute dL/dW via X^T · δ (sums over S), then reduce over B
+//   4) Compute dL/db by summing δ over S and B
+//   5) Propagate dL/dX = δ · W
+
+void NeuralBlock::BackPropagate(const Tensor& upstream_error_dL_da) {
+    assert(block_size_>0 && "Block size must be greater than 0 in NeuralBlock::BackPropagate().");
+    assert(!layers_.empty());
+    assert(forward_pass_called_ && "BackPropagate() requires Forward_Pass() first");
+    // Shape checks
+    {
+        const auto& top_out = layers_.back().Get_Output_View();
+        assert(upstream_error_dL_da.rows()    == top_out.rows() &&
+               upstream_error_dL_da.columns() == top_out.columns() &&
+               upstream_error_dL_da.depth()   == top_out.depth() &&
+               "Upstream gradient must match top layer output [S,N_last,B]");
+    }
+    upstream_error_entering_block_ = upstream_error_dL_da;
+
+    //We start from the top of the stack (layers of the MLP)
+    for (size_t i = layers_.size(); i-- > 0; ) {
+        if (i == layers_.size() - 1) {
+            layers_[i].Backpropagate(upstream_error_dL_da);
+        } else {
+            const Tensor& error_gradient = layers_[i + 1].Get_Downstream_Error(); // [S, I_i, B]
+            layers_[i].Backpropagate(error_gradient);
+        }
+    }
+
+    downstream_error_leaving_block_ = layers_.front().Get_Downstream_Error(); // to previous block
+    back_propagation_done_ = true;
+    upstream_error_set_= true;
+    downstream_error_set_  = true;
+}
+```
+
+**Chain Rule in Action**: Each step corresponds to one term in the chain rule.No hidden computation—just careful application of calculus translated to tensor operations.
+
+### Gradient Descent
+
+Weight updates use vanilla SGD:
+
+```cpp
+//  This is after the full network has been backpropagated.
+void NeuralBlock::Update_Block(const float learning_rate) {
+    assert(back_propagation_done_ && "Update_Block() requires BackPropagate() first");
+    for (auto& layer : layers_) {
+        layer.Update_Parameters(learning_rate);
+    }
+    update_block_called_ = true;
+}
+```
+
+More sophisticated optimizers (Adam, RMSprop) are planned but not yet implemented. The focus is correctness first, optimization second.
+
+---
 
 ## Building and Running
 
 ### Prerequisites
 
-- CMake 3.26 or higher
-- C++23 compatible compiler (GCC 13+, Clang 16+, MSVC 2022+)
-- No external libraries required (only C++ STL)
+- CMake 3.26+
+- C++23 compiler (GCC 13+, Clang 16+, MSVC 2022+)
+- No external libraries (only C++ STL)
 
 ### Build Instructions
-
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/FLUX.git
-cd FLUX
-
-# Create build directory
+git clone https://github.com/Rocky111245/Flux-A-Custom-Educational-Deep-Learning-Framework.git
+cd Flux-A-Custom-Educational-Deep-Learning-Framework
 mkdir build && cd build
-
-# Configure with CMake
 cmake ..
-
-# Build all targets
 cmake --build .
-
-# Run MLP examples
-./MLP_main
-
-# Run Transformer component tests
-./Transformer_main
-
-# Run visualization server (optional)
-./WebVis_main
 ```
 
-### CMake Targets
+### Available Executables
+```bash
+# Multi-Layer Perceptron examples and tests
+./MLP_main
 
-The build system creates several executables:
+# Transformer component demonstrations
+./Transformer_main
 
-- `MLP_main`: Multi-Layer Perceptron examples and tests
-- `Transformer_main`: Transformer component demonstrations
-- `WebVis_main`: Real-time training visualization server
+# Real-time training visualization server
+./WebVis_main
 
-Additionally, the following static libraries are built:
-- `NeuralCore`: Shared computational components (tensors, activations, loss functions)
-- `MultiLayerPerceptron`: MLP-specific architecture
-- `TransformerModel`: Transformer components
-- `WebVisualization`: Monitoring and visualization tools
+# Main project executable (general demonstrations)
+./FluxNeuralNetworkFramework
+```
 
-## Testing and Validation
+### CMake Build Targets
 
-The MLP implementation has been validated on several problems:
+**Static Libraries:**
+- `NeuralCore` - Core computational components (tensors, activations, loss functions)
+- `MultiLayerPerceptron` - MLP-specific architecture and training
+- `TransformerModel` - Transformer components (attention, embeddings, tokenization)
+- `WebVisualization` - Real-time training monitoring and data serialization
 
-**4-bit Parity Problem**: A classic non-linearly separable problem that requires hidden layers. The network successfully learns the XOR-like patterns with 100% accuracy after training.
+**Executables:**
+- `MLP_main` - MLP examples and validation (4-bit parity, multi-layer tests)
+- `Transformer_main` - Individual Transformer component tests
+- `WebVis_main` - WebSocket server for live training visualization
+- `FluxNeuralNetworkFramework` - Main project demonstrations
+---
 
-**Multi-Layer Convergence**: Networks with arbitrary depth (tested up to 10 layers) successfully converge on regression and classification tasks, demonstrating that gradients flow correctly through deep architectures.
 
-**Gradient Checking**: Numerical gradient checking has been used during development to verify that analytical gradients match finite difference approximations, ensuring backpropagation correctness.
+## Technical Philosophy
 
-## Performance Characteristics
+### Understanding Through Building
 
-FLUX is not optimized for speed—it's optimized for clarity. That said, certain design decisions provide reasonable performance:
+This project embodies a specific philosophy: **understanding comes from implementation, not just usage**. You can read papers about backpropagation, watch lectures, work through derivations—but until you've implemented it yourself, debugged gradient flow, and fixed numerical instability, you don't truly understand it.
 
-**Memory Layout**: Tensors use contiguous memory allocation with row-major ordering, providing good cache locality during matrix operations.
+### Transparency Over Convenience
 
-**Pre-allocation**: All tensors are allocated during initialization, not during training. This eliminates allocation overhead in the hot path.
+FLUX is intentionally low-level and explicit. It doesn't hide memory management, doesn't abstract away gradients, and doesn't use computational graphs. This makes it harder to use than PyTorch, **but that difficulty is the learning opportunity**.
 
-**No Python Overhead**: Being pure C++ means no interpreter overhead, no GIL contention, and no Python-C++ boundary crossings.
+Modern frameworks optimize for productivity. FLUX optimizes for understanding. Every operation is traceable, every gradient is visible, every architectural decision is explicit in the code.
 
-**Future Optimization**: The code is structured to allow SIMD vectorization and GPU acceleration in the future, though these are not currently implemented.
+### Open Source, Open Mathematics
 
-## Visualization and Monitoring
+FLUX is open source not just in license but in philosophy. The code is designed to be read, not just executed. Variable names are descriptive, operations are explicit, and the mathematics maps directly to the implementation.
 
-A WebSocket-based visualization server allows real-time monitoring of training progress. It serializes tensor data (weights, gradients, activations) to a binary format and streams them to a web interface, where you can observe how the network evolves during training.
+When you see `∂L/∂w` in a paper, you can find `dL_dw_` in the codebase. When you read about attention mechanisms, you can trace through `SingleAttentionHead::Forward()`. The theory and practice are aligned.
 
-This is particularly useful for debugging—watching weight distributions and gradient magnitudes helps identify issues like vanishing gradients, exploding gradients, or dead neurons.
+### Long-Term Learning Project
 
-## What's Next
+This is not a sprint to production. It's a multi-year educational journey undertaken alongside Master's research. Progress happens incrementally, architecture by architecture, with each component understood deeply before moving forward.
 
-Development continues on several fronts:
-
-**Completing CNNs**: Implementing backpropagation through convolutional and pooling layers is the immediate priority. Once this works, MNIST digit classification will serve as the validation test.
-
-**Assembling Transformers**: Connecting all the existing components into a full Transformer block and implementing the training loop. The goal is to train a small language model on a simple dataset.
-
-**Advanced Optimizers**: Implementing Adam, RMSprop, and momentum-based gradient descent to improve training dynamics.
-
-**Regularization**: Adding dropout, batch normalization, and weight decay.
-
-**Model Serialization**: Saving and loading trained models so networks don't need to be retrained from scratch.
-
-This is a long-term, ongoing project. Progress happens incrementally as I balance research, coursework, and implementation. The focus remains on understanding, not speed of development.
-
-## Technical Resources
-
-Understanding the mathematics and implementation requires background knowledge:
-
-**Backpropagation**: "Neural Networks and Deep Learning" by Michael Nielsen provides excellent intuition for how gradients flow through networks.
-
-**Matrix Calculus**: "The Matrix Cookbook" is invaluable for understanding the derivatives used in gradient computation.
-
-**Transformer Architecture**: "Attention Is All You Need" (Vaswani et al., 2017) is the foundational paper, but Jay Alammar's illustrated guide provides better intuition.
-
-**CNN Mechanics**: CS231n lecture notes from Stanford explain convolution, pooling, and backpropagation through CNNs clearly.
-
-## Philosophy and Goals
-
-This project embodies a specific philosophy about learning: **understanding comes from building, not just using**. You can read papers about backpropagation, watch lectures, work through derivations—but until you've implemented it yourself, debugged gradient flow, and fixed numerical instability issues, you don't truly understand it.
-
-FLUX is intentionally low-level and explicit. It doesn't use automatic differentiation, doesn't hide memory management, and doesn't abstract away computational details. This makes it harder to use than PyTorch, but that's the point. The difficulty is the learning opportunity.
-
-The goal is not to create a production-ready framework. It's to create a tool for understanding—for anyone who wants to know how neural networks actually work beneath the high-level APIs.
+The goal is not to replace PyTorch. It's to create a tool for learning—for anyone who wants to understand how neural networks actually work beneath the high-level APIs.
 
 ---
 
