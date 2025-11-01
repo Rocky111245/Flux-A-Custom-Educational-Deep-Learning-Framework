@@ -1,4 +1,4 @@
-# FLUX: A Deep Learning Framework Built from First Principles
+# FLUX: A Deep Learning Framework in C++ Built from First Principles
 
 > **An educational PyTorch/TensorFlow clone with zero external dependencies—pure C++ exposing the mathematics behind neural networks**
 
@@ -35,6 +35,30 @@ The framework is built around a custom 3D tensor library (also built from first 
 - **Any Architecture**: Tensor-based foundation supports MLPs, CNNs, and Transformers with unified operations
 
 FLUX provides high-level APIs for easy model construction while maintaining complete transparency. You can build models quickly but every internal operation—forward pass, gradient computation, weight update—is implemented explicitly in readable C++ code.
+
+### Modularity and Architectural Flexibility
+
+FLUX layers are fully modular, self-contained objects. Each `Neural` layer encapsulates its own weights, biases, activations, and gradients—meaning layers can be **copied, moved, and reused** freely, even after training.
+
+**This enables powerful architectural patterns:**
+
+**Weight Transfer**: Copy trained layers between networks for transfer learning or feature extraction:
+```cpp
+Neural pretrained_layer(128, Activation_Type::RELU);
+// ... train pretrained_layer on task A ...
+
+// Reuse in a new network for task B
+Neural new_layer = pretrained_layer;  // Copy constructor preserves trained weights
+```
+
+**Weight Sharing**: Multiple network paths can share the same layer instance (Siamese networks, autoencoders):
+```cpp
+Neural shared_encoder(64, Activation_Type::TANH);
+NeuralBlock network1({shared_encoder, output_layer1});
+NeuralBlock network2({shared_encoder, output_layer2});
+// Both networks use identical encoder weights
+```
+
 
 Example of a MLP (Feed-Forward Network) :
 ```
@@ -202,7 +226,7 @@ FLUX is a work in progress, developed alongside my research Master's in Computer
 - **In Progress**: Full Transformer glue code, training loops, backpropagation, sequence generation
 - **Note**: FLUX is very modular. The MLP block can be used and attached to the transformer block without rewriting code.
 
-### 🔄 Convolutional Neural Networks (Forward Pass Complete)
+### 🔄 Convolutional Neural Networks (Core Components Implemented)
 - **Complete**: Convolutional layers, pooling (max/average), padding strategies (VALID/SAME), im2row (specialized algorithm from im2col) algorithm, kernel operations
 - **In Progress**: Backpropagation through conv/pooling layers
 - **Note**: Gradient computation under development
@@ -475,7 +499,7 @@ try {
 
 ### Validation: 4-Bit Parity Problem
 
-The 4-bit parity problem tests whether a network can learn non-linear patterns (XOR-like logic). FLUX successfully trains to 100% accuracy:
+The 4-bit parity problem tests whether a network can learn non-linear patterns (XOR-like logic). FLUX successfully trains to 100% accuracy (overfit):
 
 ![train flux](https://github.com/user-attachments/assets/da0830f2-d9e3-413c-ad5c-28428e23527a)
 
