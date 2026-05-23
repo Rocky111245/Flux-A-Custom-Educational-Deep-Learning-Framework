@@ -18,6 +18,10 @@
 - [Project Structure](#project-structure)
 - [Technical Philosophy](#technical-philosophy)
 
+
+
+UPDATE 23/05/2026-> Project currently on pause due me being busy with my Master's thesis (Computer Science Research in Computer Vision using AI).
+
 ---
 
 ## What is FLUX?
